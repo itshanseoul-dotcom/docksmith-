@@ -1,0 +1,113 @@
+// Docksmith — MVP 데이터 모델
+// 팀/권한/구독 테이블은 아직 만들지 않는다 (ROADMAP.md Beta/V1 단계에서 추가)
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum FieldType {
+  TEXT
+  NUMBER
+  DATE
+  CURRENCY
+}
+
+enum JobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// MVP는 1 조직 = 1 사용자(Supabase Auth의 auth.users.id를 그대로 소유자로 사용).
+// 여러 명이 함께 쓰는 팀 권한은 V1에서 Membership 모델로 확장한다.
+model Organization {
+  id              String     @id @default(cuid())
+  name            String
+  ownerAuthUserId String     @unique
+  createdAt       DateTime   @default(now())
+  templates       Template[]
+
+  @@map("organizations")
+}
+
+model Template {
+  id             String          @id @default(cuid())
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String
+  name           String
+  category       String?
+  sourceFileUrl  String
+  pageCount      Int             @default(1)
+  fields         TemplateField[]
+  jobs           GenerationJob[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([organizationId])
+  @@map("templates")
+}
+
+// 매핑 스튜디오에서 클릭으로 지정한 필드 하나 = 한 행.
+// x/y/width/height는 PDF 페이지 좌표계 기준(pdf-lib 단위와 동일하게 저장).
+model TemplateField {
+  id         String    @id @default(cuid())
+  template   Template  @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  templateId String
+  key        String
+  label      String
+  type       FieldType @default(TEXT)
+  page       Int       @default(1)
+  x          Float
+  y          Float
+  width      Float
+  height     Float
+  fontSize   Float     @default(10)
+
+  @@unique([templateId, key])
+  @@map("template_fields")
+}
+
+// 생성된 PDF 파일 자체는 저장하지 않는다 — 브라우저에서 생성 즉시 다운로드되므로
+// 여기 남는 건 "몇 건을 언제 처리했는지"에 대한 기록뿐이다.
+model GenerationJob {
+  id             String              @id @default(cuid())
+  template       Template            @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  templateId     String
+  sourceFileName String
+  rowCount       Int
+  status         JobStatus           @default(PENDING)
+  createdAt      DateTime            @default(now())
+  items          GenerationJobItem[]
+
+  @@index([templateId])
+  @@map("generation_jobs")
+}
+
+model GenerationJobItem {
+  id           String        @id @default(cuid())
+  job          GenerationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  jobId        String
+  rowIndex     Int
+  rowData      Json
+  status       JobStatus     @default(PENDING)
+  errorMessage String?
+
+  @@index([jobId])
+  @@map("generation_job_items")
+}
+
+// CSV 컬럼명 ↔ 필드 key 자동 매칭용 동의어 딕셔너리 (PRD 2.2)
+model ColumnAlias {
+  id           String @id @default(cuid())
+  canonicalKey String
+  alias        String @unique
+
+  @@index([canonicalKey])
+  @@map("column_alias_dictionary")
+}
