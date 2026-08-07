@@ -62,7 +62,7 @@ export async function uploadTemplate(
     return { error: "업로드 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요." };
   }
 
-  await prisma.template.create({
+  const template = await prisma.template.create({
     data: {
       organizationId: organization.id,
       name,
@@ -73,5 +73,5 @@ export async function uploadTemplate(
     },
   });
 
-  redirect("/dashboard?uploaded=1");
+  redirect(`/templates/${template.id}/mapping`);
 }
