@@ -57,5 +57,5 @@ export async function saveTemplateFields(
     }),
   ]);
 
-  redirect("/dashboard?mapped=1");
+  redirect(`/templates/${templateId}/generate`);
 }
