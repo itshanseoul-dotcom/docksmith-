@@ -36,7 +36,12 @@ export async function signup(
   const password = String(formData.get("password") ?? "");
 
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  const origin = (await headers()).get("origin");
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { emailRedirectTo: `${origin}/auth/callback` },
+  });
 
   if (error) {
     return { error: error.message };

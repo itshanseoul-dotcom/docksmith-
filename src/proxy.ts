@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // Next.js 16부터 middleware.ts는 proxy.ts로 이름이 바뀌었다 (기능은 동일).
-const PROTECTED_PREFIXES = ["/dashboard"];
+const PROTECTED_PREFIXES = ["/dashboard", "/templates"];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
