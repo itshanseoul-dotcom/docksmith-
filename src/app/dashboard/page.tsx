@@ -1,14 +1,26 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { prisma } from "@/lib/prisma";
 import { Button, buttonVariants } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { logout } from "@/app/login/actions";
 
-export default async function DashboardPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ uploaded?: string }>;
-}) {
+const JOB_STATUS_LABEL: Record<string, string> = {
+  PENDING: "대기 중",
+  PROCESSING: "처리 중",
+  COMPLETED: "완료",
+  FAILED: "실패",
+};
+
+export default async function DashboardPage() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -18,28 +30,113 @@ export default async function DashboardPage({
     redirect("/login");
   }
 
-  const { uploaded } = await searchParams;
+  const organization = await prisma.organization.findUnique({
+    where: { ownerAuthUserId: user.id },
+  });
+
+  const [templates, jobs] = organization
+    ? await Promise.all([
+        prisma.template.findMany({
+          where: { organizationId: organization.id },
+          orderBy: { createdAt: "desc" },
+        }),
+        prisma.generationJob.findMany({
+          where: { template: { organizationId: organization.id } },
+          orderBy: { createdAt: "desc" },
+          take: 10,
+          include: { template: { select: { name: true } } },
+        }),
+      ])
+    : [[], []];
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
-      <h1 className="text-2xl font-semibold">환영합니다, {user.email}</h1>
-      <p className="max-w-md text-muted-foreground">
-        대시보드 화면은 ROADMAP 1.7 단계에서 만들어집니다. 지금은 인증과
-        템플릿 업로드가 정상 동작하는지 확인하는 자리입니다.
-      </p>
-      {uploaded && (
-        <p className="text-sm text-emerald-600">템플릿이 업로드되었습니다.</p>
-      )}
-      <div className="flex gap-2">
-        <Link href="/templates/new" className={buttonVariants({ variant: "default" })}>
-          새 템플릿 업로드
-        </Link>
+    <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-8 p-6">
+      <header className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-semibold">대시보드</h1>
+          <p className="text-sm text-muted-foreground">{user.email}</p>
+        </div>
         <form action={logout}>
           <Button variant="outline" type="submit">
             로그아웃
           </Button>
         </form>
-      </div>
+      </header>
+
+      <section className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-medium">내 템플릿</h2>
+          <Link href="/templates/new" className={buttonVariants({ variant: "default" })}>
+            새 템플릿 만들기
+          </Link>
+        </div>
+
+        {templates.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+              <p className="text-sm text-muted-foreground">
+                아직 템플릿이 없습니다. 첫 템플릿을 만들어보세요.
+              </p>
+              <Link href="/templates/new" className={buttonVariants({ variant: "default" })}>
+                새 템플릿 만들기
+              </Link>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+            {templates.map((template) => (
+              <Card key={template.id}>
+                <CardHeader>
+                  <CardTitle className="truncate">{template.name}</CardTitle>
+                  <CardDescription>{template.pageCount}페이지</CardDescription>
+                </CardHeader>
+                <CardFooter>
+                  <Link
+                    href={`/templates/${template.id}/generate`}
+                    className={buttonVariants({ variant: "outline", size: "sm" })}
+                  >
+                    생성하기
+                  </Link>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <h2 className="text-lg font-medium">최근 생성 이력</h2>
+        {jobs.length === 0 ? (
+          <p className="text-sm text-muted-foreground">아직 생성 이력이 없습니다.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-muted-foreground">
+                  <th className="py-2 pr-4">템플릿</th>
+                  <th className="py-2 pr-4">파일</th>
+                  <th className="py-2 pr-4">건수</th>
+                  <th className="py-2 pr-4">상태</th>
+                  <th className="py-2">시각</th>
+                </tr>
+              </thead>
+              <tbody>
+                {jobs.map((job) => (
+                  <tr key={job.id} className="border-b">
+                    <td className="py-2 pr-4">{job.template.name}</td>
+                    <td className="py-2 pr-4">{job.sourceFileName}</td>
+                    <td className="py-2 pr-4">{job.rowCount}건</td>
+                    <td className="py-2 pr-4">
+                      {JOB_STATUS_LABEL[job.status] ?? job.status}
+                    </td>
+                    <td className="py-2">{job.createdAt.toLocaleString("ko-KR")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </div>
   );
 }
