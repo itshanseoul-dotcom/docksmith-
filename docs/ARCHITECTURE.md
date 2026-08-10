@@ -124,14 +124,15 @@
 
 ---
 
-## 9. Deployment & CI/CD — Docker 기반, Fly.io
+## 9. Deployment & CI/CD — Vercel (2026-08 변경)
 
-**선택 이유**
-- 조건에 "Docker 기반"이 명시돼 있고, 실제로도 Vercel 같은 벤더 종속 빌드 시스템보다 Dockerfile 하나로 어디서든 옮길 수 있는 게 1인 개발자에게 유리하다 (특정 PaaS가 가격을 올리거나 서비스가 바뀌어도 마이그레이션 비용이 낮음).
-- **Fly.io**를 1차 추천: Docker 이미지를 그대로 배포, 리전별 배포 지원(향후 글로벌 확장 시 유리), 저렴한 시작 비용, autoscaling 설정이 단순.
-- CI/CD: GitHub Actions → 테스트/타입체크 → Docker 이미지 빌드 → Fly.io 배포. 하나의 워크플로 파일로 충분해서 유지보수 부담이 낮다.
+**바뀐 이유**: 원래는 "Docker 기반, Fly.io"로 설계했었다(이식성 우선). 그런데 1인 개인 프로젝트 단계에서는 "돈이 전혀 안 나가는 것"이 이식성보다 훨씬 중요하다는 게 명확해져서 바꿨다. Fly.io는 보통 카드 등록이 필요하고 사용량에 따라 과금될 수 있는 반면, **Vercel 무료(Hobby) 티어는 카드 등록 없이 쓸 수 있고**, 이 서비스처럼 PDF 생성이 서버가 아니라 브라우저에서 도는 구조엔 서버리스 함수 요청이 가벼워서 무료 한도 안에 잘 맞는다. Next.js를 만든 회사라 설정도 거의 필요 없다(리포지토리 연결만 하면 push할 때마다 자동 배포).
 
-**로컬 개발**: `docker-compose.yml`로 Postgres(로컬 테스트용)까지 포함해 프로덕션과 유사한 환경을 재현.
+**트레이드오프**: Vercel은 Fly.io/Docker보다 벤더 종속이 크다 — 나중에 유료 고객이 생기고 규모가 커지면 그때 Fly.io나 다른 곳으로 옮기는 걸 다시 검토한다. 그때까지는 `next.config.ts`에 `output: "standalone"`을 켜지 않는다(Vercel 빌드와 충돌 — [vercel/next.js#43654](https://github.com/vercel/next.js/issues/43654)).
+
+- CI/CD: GitHub Actions는 lint/타입체크/빌드만 검증한다(`.github/workflows/ci.yml`). 실제 배포는 Vercel의 GitHub 연동이 push마다 자동으로 처리하므로 별도 배포 워크플로가 필요 없다.
+- 환경변수(`DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`)는 Vercel 프로젝트 설정의 Environment Variables에 등록한다.
+- Dockerfile/docker-compose.yml은 이 변경으로 제거했다. 로컬 개발은 `npm run dev`로 충분하다(원래 docker-compose도 Postgres 없이 앱 컨테이너만 띄우는 용도였다 — 실제 DB는 항상 Supabase를 직접 씀).
 
 ---
 
@@ -140,7 +141,7 @@
 1. **데이터 최소 수집**: 실제 서류에 들어가는 민감정보(수하인 주소, 금액 등)는 브라우저에서만 처리되고 서버에 저장되지 않는다 — 이게 가장 강력한 보안 설계다. 데이터가 없으면 유출될 데이터도 없다.
 2. **DB Row Level Security**: 조직 단위로 강제 격리.
 3. **입력 검증**: 모든 API에 Zod 스키마, 업로드 파일은 MIME 타입/크기 화이트리스트.
-4. **비밀 관리**: `.env`는 절대 커밋하지 않고, Fly.io Secrets / GitHub Actions Secrets로 관리.
+4. **비밀 관리**: `.env`는 절대 커밋하지 않고, Vercel Environment Variables / GitHub Actions Secrets로 관리.
 5. **Rate Limiting**: 업로드·생성 엔드포인트에 Upstash Ratelimit 적용 (악용/과금 우회 방지).
 6. **결제 데이터**: 카드 정보는 전혀 우리 서버를 거치지 않음(Stripe가 전담).
 
@@ -183,7 +184,7 @@ PRD에서 명시했듯 MVP는 AI를 전혀 쓰지 않는다(딕셔너리 매칭�
 | Storage | Supabase Storage → (V1+) Cloudflare R2 | MVP는 단순함 우선, 트래픽 늘면 egress-free로 전환 |
 | Billing | Stripe | PCI 부담 제거, 구독/인보이스 자동화 |
 | Queue/Worker | (V1+) BullMQ + Upstash Redis | 무인 자동화(Shopify/API)에서만 필요, 유휴비용 최소 |
-| Deployment | Docker + Fly.io | 벤더 종속 낮음, Docker 조건 충족, 리전 확장 용이 |
+| Deployment | Vercel | 무료 티어로 카드 등록 없이 운영(9장 참고, 2026-08 변경 — 원래는 Docker+Fly.io) |
 | CI/CD | GitHub Actions | 단일 워크플로, 관리 부담 낮음 |
 | Monitoring | Sentry + PostHog + UptimeRobot | 무료 티어로 MVP 전부 커버 |
 | AI (향후) | Claude Vision API (선택적 호출) | 1회성 호출 지점만 열어둠, MVP에는 미포함 |

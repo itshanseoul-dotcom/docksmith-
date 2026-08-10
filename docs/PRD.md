@@ -213,7 +213,7 @@ ChatGPT 분석에서 강하게 권고한 방향을 그대로 채택한다: **가
 - **DB**: PostgreSQL (매니지드, 예: Supabase) — 운영 부담 최소화.
 - **Storage**: Cloudflare R2 — 템플릿 원본만 저장, egress 무료.
 - **Queue/Worker**: V1+에서 Shopify/API 자동화가 생기면 도입 (BullMQ + Redis). MVP에는 불필요.
-- **Deployment**: Docker 기반, Fly.io/Railway 같은 저비용 PaaS로 시작.
+- **Deployment**: Vercel(무료 티어)로 시작 — 이유는 ARCHITECTURE.md 9장 참고. 이전 Docker+Fly.io 계획에서 비용 문제로 변경(2026-08).
 - **Auth**: Supabase Auth 또는 Clerk (이메일 + Google OAuth).
 - **Billing**: Stripe.
 

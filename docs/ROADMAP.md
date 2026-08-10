@@ -72,7 +72,7 @@
 - **다음 단계 연관성**: Beta 단계의 사용량 제한 UI가 이 화면에 얹힌다.
 
 ### 1.8 최소 랜딩페이지 1개 + 배포
-- **목표**: 물류 문서 하나("Commercial Invoice Generator")를 타겟으로 한 랜딩페이지 1개, Fly.io에 Docker로 배포
+- **목표**: 물류 문서 하나("Commercial Invoice Generator")를 타겟으로 한 랜딩페이지 1개, Vercel에 배포 (ARCHITECTURE.md 9장 — 비용 문제로 Fly.io+Docker에서 변경)
 - **예상 작업일**: 3일
 - **난이도**: 중 (SEO 페이지는 Beta에서 확장하지만, 배포 파이프라인 자체는 여기서 완성해야 함)
 - **왜 필요한가**: MVP를 "나만 쓰는 것"에서 "남에게 링크로 줄 수 있는 것"으로 만든다.
