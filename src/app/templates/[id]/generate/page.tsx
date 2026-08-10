@@ -28,13 +28,33 @@ export default async function GenerateTemplatePage({
     notFound();
   }
 
+  const { data: signed, error } = await supabase.storage
+    .from("templates")
+    .createSignedUrl(template.sourceFileUrl, 60 * 10);
+
+  if (error || !signed) {
+    notFound();
+  }
+
   const aliases = await prisma.columnAlias.findMany();
 
   return (
     <div className="flex flex-1 flex-col">
       <CsvMatcher
+        templateId={template.id}
         templateName={template.name}
-        fields={template.fields.map((f) => ({ key: f.key, label: f.label }))}
+        pdfUrl={signed.signedUrl}
+        fields={template.fields.map((f) => ({
+          key: f.key,
+          label: f.label,
+          type: f.type,
+          page: f.page,
+          x: f.x,
+          y: f.y,
+          width: f.width,
+          height: f.height,
+          fontSize: f.fontSize,
+        }))}
         aliases={aliases}
       />
     </div>

@@ -1,31 +1,49 @@
 "use client";
 
-import { useState, type ChangeEvent } from "react";
+import { useRef, useState, useTransition, type ChangeEvent } from "react";
 import Papa from "papaparse";
+import JSZip from "jszip";
 import { Button } from "@/components/ui/button";
-import { autoMatchColumns, type AliasEntry, type FieldForMatching } from "./matching";
+import { autoMatchColumns, type AliasEntry } from "./matching";
+import type { FieldSpec } from "./types";
+import type { GenerateRequest, GenerateResponse } from "./pdf-worker";
+import { recordGenerationJob } from "./generation-actions";
 
 interface CsvMatcherProps {
+  templateId: string;
   templateName: string;
-  fields: FieldForMatching[];
+  pdfUrl: string;
+  fields: FieldSpec[];
   aliases: AliasEntry[];
 }
 
-export function CsvMatcher({ templateName, fields, aliases }: CsvMatcherProps) {
+interface GenerationProgress {
+  completed: number;
+  total: number;
+  failed: number;
+}
+
+export function CsvMatcher({ templateId, templateName, pdfUrl, fields, aliases }: CsvMatcherProps) {
   const [fileName, setFileName] = useState<string | null>(null);
   const [headers, setHeaders] = useState<string[] | null>(null);
-  const [rowCount, setRowCount] = useState(0);
+  const [csvRows, setCsvRows] = useState<string[][]>([]);
   const [mapping, setMapping] = useState<Record<string, number | null>>({});
   const [parseError, setParseError] = useState<string | null>(null);
+
+  const [progress, setProgress] = useState<GenerationProgress | null>(null);
+  const [genError, setGenError] = useState<string | null>(null);
+  const [, startRecording] = useTransition();
+  const workerRef = useRef<Worker | null>(null);
 
   function handleFile(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setParseError(null);
+    setGenError(null);
     setFileName(file.name);
 
     // CSV는 브라우저 밖으로 절대 안 나간다 — 이 파일 안에 실제 수취인 정보/금액이
-    // 들어있을 수 있어서, 딕셔너리 매칭도 전부 클라이언트에서만 계산한다.
+    // 들어있을 수 있어서, 딕셔너리 매칭과 PDF 생성 모두 클라이언트에서만 처리한다.
     Papa.parse<string[]>(file, {
       skipEmptyLines: true,
       complete: (results) => {
@@ -37,7 +55,7 @@ export function CsvMatcher({ templateName, fields, aliases }: CsvMatcherProps) {
         }
         const [header, ...dataRows] = rows;
         setHeaders(header);
-        setRowCount(dataRows.length);
+        setCsvRows(dataRows);
         setMapping(autoMatchColumns(fields, aliases, header));
       },
       error: (err) => {
@@ -47,6 +65,89 @@ export function CsvMatcher({ templateName, fields, aliases }: CsvMatcherProps) {
   }
 
   const matchedCount = Object.values(mapping).filter((v) => v !== null).length;
+  const isGenerating = progress !== null && progress.completed < progress.total;
+
+  async function handleGenerate() {
+    if (!headers || csvRows.length === 0) return;
+    setGenError(null);
+    setProgress({ completed: 0, total: csvRows.length, failed: 0 });
+
+    let templateBytes: ArrayBuffer;
+    try {
+      const res = await fetch(pdfUrl);
+      templateBytes = await res.arrayBuffer();
+    } catch {
+      setGenError("템플릿 PDF를 불러오지 못했습니다.");
+      setProgress(null);
+      return;
+    }
+
+    const mappedRows: Record<string, string>[] = csvRows.map((row) => {
+      const record: Record<string, string> = {};
+      for (const field of fields) {
+        const colIndex = mapping[field.key];
+        record[field.key] = colIndex !== null && colIndex !== undefined ? row[colIndex] ?? "" : "";
+      }
+      return record;
+    });
+
+    const zip = new JSZip();
+    let successCount = 0;
+
+    const worker = new Worker(new URL("./pdf-worker.ts", import.meta.url), {
+      type: "module",
+    });
+    workerRef.current = worker;
+
+    worker.onmessage = (event: MessageEvent<GenerateResponse>) => {
+      const msg = event.data;
+      if (msg.type === "row-done") {
+        zip.file(msg.fileName, msg.bytes);
+        successCount++;
+        setProgress({ completed: msg.index + 1, total: msg.total, failed: 0 });
+      } else if (msg.type === "row-error") {
+        setProgress((prev) => ({
+          completed: msg.index + 1,
+          total: msg.total,
+          failed: (prev?.failed ?? 0) + 1,
+        }));
+      } else if (msg.type === "done") {
+        worker.terminate();
+        workerRef.current = null;
+        finishGeneration(zip, successCount, csvRows.length);
+      }
+    };
+
+    worker.onerror = () => {
+      setGenError("PDF 생성 중 오류가 발생했습니다.");
+      worker.terminate();
+      workerRef.current = null;
+      setProgress(null);
+    };
+
+    const request: GenerateRequest = { templateBytes, fields, rows: mappedRows };
+    worker.postMessage(request, [templateBytes]);
+  }
+
+  async function finishGeneration(zip: JSZip, successCount: number, rowCount: number) {
+    if (successCount > 0) {
+      const blob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${templateName}-results.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    startRecording(() => {
+      recordGenerationJob(templateId, {
+        sourceFileName: fileName ?? "unknown.csv",
+        rowCount,
+        successCount,
+      });
+    });
+  }
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 p-6">
@@ -64,8 +165,8 @@ export function CsvMatcher({ templateName, fields, aliases }: CsvMatcherProps) {
       {headers && (
         <>
           <p className="text-sm text-muted-foreground">
-            {fileName} · {rowCount}개 행 감지됨 · {matchedCount}/{fields.length}개 필드 자동
-            매칭
+            {fileName} · {csvRows.length}개 행 감지됨 · {matchedCount}/{fields.length}개 필드
+            자동 매칭
           </p>
 
           <table className="w-full text-sm">
@@ -104,13 +205,28 @@ export function CsvMatcher({ templateName, fields, aliases }: CsvMatcherProps) {
             </tbody>
           </table>
 
-          <div className="flex flex-col gap-1">
-            <Button type="button" disabled title="ROADMAP 1.6에서 추가됩니다">
-              PDF 일괄 생성
+          <div className="flex flex-col gap-2">
+            <Button type="button" onClick={handleGenerate} disabled={isGenerating}>
+              {isGenerating ? "생성 중..." : "PDF 일괄 생성"}
             </Button>
-            <p className="text-xs text-muted-foreground">
-              실제 생성 기능은 다음 단계(1.6 클라이언트 사이드 생성 엔진)에서 연결됩니다.
-            </p>
+
+            {progress && (
+              <div className="flex flex-col gap-1">
+                <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full bg-primary transition-all"
+                    style={{ width: `${(progress.completed / progress.total) * 100}%` }}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {progress.completed} / {progress.total}건 처리
+                  {progress.failed > 0 && ` · 실패 ${progress.failed}건`}
+                  {!isGenerating && " · 완료, ZIP 다운로드됨"}
+                </p>
+              </div>
+            )}
+
+            {genError && <p className="text-sm text-destructive">{genError}</p>}
           </div>
         </>
       )}
