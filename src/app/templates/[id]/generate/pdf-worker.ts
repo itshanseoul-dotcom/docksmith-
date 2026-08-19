@@ -1,4 +1,5 @@
-import { PDFDocument, StandardFonts } from "pdf-lib";
+import { PDFDocument } from "pdf-lib";
+import fontkit from "@pdf-lib/fontkit";
 import type { FieldSpec } from "./types";
 
 export interface GenerateRequest {
@@ -24,11 +25,18 @@ addEventListener("message", async (event: MessageEvent<GenerateRequest>) => {
   const { templateBytes, fields, rows } = event.data;
   const total = rows.length;
 
+  // pdf-lib의 표준 폰트(WinAnsi)는 한글을 못 그린다 — CSV 값에 한글 회사명/주소가
+  // 섞이는 경우가 흔해서, 한/영 둘 다 되는 폰트를 매 행마다 새로 임베드한다.
+  const koreanFontBytes = await fetch("/fonts/noto-sans-kr-400.woff").then((r) =>
+    r.arrayBuffer()
+  );
+
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     try {
       const doc = await PDFDocument.load(templateBytes);
-      const font = await doc.embedFont(StandardFonts.Helvetica);
+      doc.registerFontkit(fontkit);
+      const font = await doc.embedFont(koreanFontBytes, { subset: true });
       const pages = doc.getPages();
 
       for (const field of fields) {

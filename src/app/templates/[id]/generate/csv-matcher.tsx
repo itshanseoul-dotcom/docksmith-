@@ -42,6 +42,7 @@ export function CsvMatcher({
   const [showLimitModal, setShowLimitModal] = useState(false);
 
   const [progress, setProgress] = useState<GenerationProgress | null>(null);
+  const [rowErrors, setRowErrors] = useState<{ index: number; message: string }[]>([]);
   const [genError, setGenError] = useState<string | null>(null);
   const [, startRecording] = useTransition();
   const workerRef = useRef<Worker | null>(null);
@@ -92,6 +93,7 @@ export function CsvMatcher({
   async function handleGenerate() {
     if (!headers || csvRows.length === 0) return;
     setGenError(null);
+    setRowErrors([]);
     setProgress({ completed: 0, total: csvRows.length, failed: 0 });
 
     let templateBytes: ArrayBuffer;
@@ -133,6 +135,7 @@ export function CsvMatcher({
           total: msg.total,
           failed: (prev?.failed ?? 0) + 1,
         }));
+        setRowErrors((prev) => [...prev, { index: msg.index, message: msg.message }]);
       } else if (msg.type === "done") {
         worker.terminate();
         workerRef.current = null;
@@ -255,6 +258,21 @@ export function CsvMatcher({
                   {!isGenerating && " · 완료, ZIP 다운로드됨"}
                 </p>
               </div>
+            )}
+
+            {rowErrors.length > 0 && (
+              <details className="rounded-lg border border-destructive/30 p-3">
+                <summary className="cursor-pointer text-sm font-medium text-destructive">
+                  실패한 행 {rowErrors.length}건 — 자세히 보기
+                </summary>
+                <ul className="mt-2 flex flex-col gap-1 text-sm">
+                  {rowErrors.map((e) => (
+                    <li key={e.index} className="text-muted-foreground">
+                      행 {e.index + 1}: {e.message}
+                    </li>
+                  ))}
+                </ul>
+              </details>
             )}
 
             {genError && <p className="text-sm text-destructive">{genError}</p>}
