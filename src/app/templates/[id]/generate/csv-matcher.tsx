@@ -15,6 +15,8 @@ interface CsvMatcherProps {
   pdfUrl: string;
   fields: FieldSpec[];
   aliases: AliasEntry[];
+  usedThisMonth: number;
+  monthlyLimit: number;
 }
 
 interface GenerationProgress {
@@ -23,17 +25,28 @@ interface GenerationProgress {
   failed: number;
 }
 
-export function CsvMatcher({ templateId, templateName, pdfUrl, fields, aliases }: CsvMatcherProps) {
+export function CsvMatcher({
+  templateId,
+  templateName,
+  pdfUrl,
+  fields,
+  aliases,
+  usedThisMonth,
+  monthlyLimit,
+}: CsvMatcherProps) {
   const [fileName, setFileName] = useState<string | null>(null);
   const [headers, setHeaders] = useState<string[] | null>(null);
   const [csvRows, setCsvRows] = useState<string[][]>([]);
   const [mapping, setMapping] = useState<Record<string, number | null>>({});
   const [parseError, setParseError] = useState<string | null>(null);
+  const [showLimitModal, setShowLimitModal] = useState(false);
 
   const [progress, setProgress] = useState<GenerationProgress | null>(null);
   const [genError, setGenError] = useState<string | null>(null);
   const [, startRecording] = useTransition();
   const workerRef = useRef<Worker | null>(null);
+
+  const remaining = Math.max(0, monthlyLimit - usedThisMonth);
 
   function handleFile(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -66,6 +79,15 @@ export function CsvMatcher({ templateId, templateName, pdfUrl, fields, aliases }
 
   const matchedCount = Object.values(mapping).filter((v) => v !== null).length;
   const isGenerating = progress !== null && progress.completed < progress.total;
+  const exceedsQuota = csvRows.length > remaining;
+
+  function handleGenerateClick() {
+    if (exceedsQuota) {
+      setShowLimitModal(true);
+      return;
+    }
+    handleGenerate();
+  }
 
   async function handleGenerate() {
     if (!headers || csvRows.length === 0) return;
@@ -156,6 +178,9 @@ export function CsvMatcher({ templateId, templateName, pdfUrl, fields, aliases }
         <p className="text-sm text-muted-foreground">
           CSV를 올리면 컬럼을 필드에 자동으로 맞춰봅니다. 안 맞은 건 직접 골라주세요.
         </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          이번 달 생성: {usedThisMonth}/{monthlyLimit}건 (무료)
+        </p>
       </div>
 
       <input type="file" accept=".csv,text/csv" onChange={handleFile} className="text-sm" />
@@ -206,7 +231,13 @@ export function CsvMatcher({ templateId, templateName, pdfUrl, fields, aliases }
           </table>
 
           <div className="flex flex-col gap-2">
-            <Button type="button" onClick={handleGenerate} disabled={isGenerating}>
+            {exceedsQuota && (
+              <p className="text-sm text-destructive">
+                이번 달 남은 무료 생성 건수({remaining}건)보다 CSV 행 수({csvRows.length}건)가
+                많습니다.
+              </p>
+            )}
+            <Button type="button" onClick={handleGenerateClick} disabled={isGenerating}>
               {isGenerating ? "생성 중..." : "PDF 일괄 생성"}
             </Button>
 
@@ -229,6 +260,35 @@ export function CsvMatcher({ templateId, templateName, pdfUrl, fields, aliases }
             {genError && <p className="text-sm text-destructive">{genError}</p>}
           </div>
         </>
+      )}
+
+      {showLimitModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6"
+          onClick={() => setShowLimitModal(false)}
+        >
+          <div
+            className="flex w-full max-w-sm flex-col gap-3 rounded-lg bg-background p-6 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-base font-semibold">무료 한도를 넘었습니다</h2>
+            <p className="text-sm text-muted-foreground">
+              이번 달 무료로 생성할 수 있는 건수는 {monthlyLimit}건이고, 이미{" "}
+              {usedThisMonth}건을 사용해서 남은 건수는 {remaining}건입니다. 이 CSV는{" "}
+              {csvRows.length}건이라 한도를 넘습니다.
+            </p>
+            <Button type="button" disabled title="Beta 2.2(Stripe 연동)에서 연결됩니다">
+              업그레이드
+            </Button>
+            <button
+              type="button"
+              onClick={() => setShowLimitModal(false)}
+              className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+            >
+              닫기
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

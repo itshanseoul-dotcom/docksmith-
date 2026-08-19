@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { getMonthlyUsage, MONTHLY_FREE_LIMIT } from "@/lib/usage";
 import { CsvMatcher } from "./csv-matcher";
 
 export default async function GenerateTemplatePage({
@@ -37,6 +38,7 @@ export default async function GenerateTemplatePage({
   }
 
   const aliases = await prisma.columnAlias.findMany();
+  const usedThisMonth = await getMonthlyUsage(template.organizationId);
 
   return (
     <div className="flex flex-1 flex-col">
@@ -56,6 +58,8 @@ export default async function GenerateTemplatePage({
           fontSize: f.fontSize,
         }))}
         aliases={aliases}
+        usedThisMonth={usedThisMonth}
+        monthlyLimit={MONTHLY_FREE_LIMIT}
       />
     </div>
   );

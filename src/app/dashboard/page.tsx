@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { logout } from "@/app/login/actions";
+import { getMonthlyUsage, MONTHLY_FREE_LIMIT } from "@/lib/usage";
 
 const JOB_STATUS_LABEL: Record<string, string> = {
   PENDING: "대기 중",
@@ -34,7 +35,7 @@ export default async function DashboardPage() {
     where: { ownerAuthUserId: user.id },
   });
 
-  const [templates, jobs] = organization
+  const [templates, jobs, usedThisMonth] = organization
     ? await Promise.all([
         prisma.template.findMany({
           where: { organizationId: organization.id },
@@ -46,8 +47,12 @@ export default async function DashboardPage() {
           take: 10,
           include: { template: { select: { name: true } } },
         }),
+        getMonthlyUsage(organization.id),
       ])
-    : [[], []];
+    : [[], [], 0];
+
+  const usagePercent = Math.min(100, (usedThisMonth / MONTHLY_FREE_LIMIT) * 100);
+  const usageBarColor = usagePercent >= 80 ? "bg-destructive" : "bg-primary";
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-8 p-6">
@@ -62,6 +67,21 @@ export default async function DashboardPage() {
           </Button>
         </form>
       </header>
+
+      <section className="flex flex-col gap-2">
+        <div className="flex items-center justify-between text-sm">
+          <span className="font-medium">이번 달 사용량</span>
+          <span className="text-muted-foreground">
+            {usedThisMonth}/{MONTHLY_FREE_LIMIT}건 (무료)
+          </span>
+        </div>
+        <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+          <div
+            className={`h-full transition-all ${usageBarColor}`}
+            style={{ width: `${usagePercent}%` }}
+          />
+        </div>
+      </section>
 
       <section className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
