@@ -1,0 +1,6 @@
+Invoice No,Invoice Date,Consignee,Description,Qty,Amount
+INV-1001,2026-08-01,Acme Trading Co.,Cotton T-Shirts (Blue, M),120,840.00
+INV-1002,2026-08-02,Globex Import LLC,Cotton T-Shirts (Black, L),80,560.00
+INV-1003,2026-08-03,Initech Logistics,Denim Jackets (Navy, L),40,960.00
+INV-1004,2026-08-04,Umbrella Freight,Canvas Tote Bags,200,500.00
+INV-1005,2026-08-05,Wayne Distribution,Cotton T-Shirts (White, S),150,900.00

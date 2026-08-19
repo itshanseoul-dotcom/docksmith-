@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { logout } from "@/app/login/actions";
+import { createSampleTemplate } from "./actions";
 import { getMonthlyUsage, MONTHLY_FREE_LIMIT } from "@/lib/usage";
 
 const JOB_STATUS_LABEL: Record<string, string> = {
@@ -21,7 +22,12 @@ const JOB_STATUS_LABEL: Record<string, string> = {
   FAILED: "실패",
 };
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ sampleError?: string }>;
+}) {
+  const { sampleError } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -97,9 +103,32 @@ export default async function DashboardPage() {
               <p className="text-sm text-muted-foreground">
                 아직 템플릿이 없습니다. 첫 템플릿을 만들어보세요.
               </p>
+              {sampleError && (
+                <p className="text-sm text-destructive">
+                  샘플 템플릿을 만드는 중 문제가 발생했습니다. 다시 시도해주세요.
+                </p>
+              )}
               <Link href="/templates/new" className={buttonVariants({ variant: "default" })}>
                 새 템플릿 만들기
               </Link>
+              <div className="flex items-center gap-3">
+                <form action={createSampleTemplate}>
+                  <button
+                    type="submit"
+                    className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+                  >
+                    샘플로 체험하기
+                  </button>
+                </form>
+                <span className="text-muted-foreground">·</span>
+                <a
+                  href="/samples/sample-commercial-invoice.csv"
+                  download
+                  className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+                >
+                  샘플 CSV 다운로드
+                </a>
+              </div>
             </CardContent>
           </Card>
         ) : (
