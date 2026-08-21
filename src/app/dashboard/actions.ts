@@ -11,12 +11,12 @@ import { prisma } from "@/lib/prisma";
 // 똑같이 Storage에 올리고 Template/TemplateField를 만들지만, 필드는 이미 매핑된
 // 상태로 만들어서 매핑 스튜디오 단계를 건너뛰고 바로 CSV 업로드 화면으로 보낸다.
 const SAMPLE_FIELDS = [
-  { key: "invoice_no", label: "Invoice No", type: "TEXT" as const, x: 200, y: 665, width: 150, height: 20, fontSize: 11 },
-  { key: "invoice_date", label: "Invoice Date", type: "DATE" as const, x: 200, y: 635, width: 150, height: 20, fontSize: 11 },
-  { key: "consignee", label: "Consignee", type: "TEXT" as const, x: 200, y: 605, width: 300, height: 20, fontSize: 11 },
-  { key: "description", label: "Description", type: "TEXT" as const, x: 200, y: 575, width: 300, height: 20, fontSize: 11 },
-  { key: "quantity", label: "Quantity", type: "NUMBER" as const, x: 200, y: 545, width: 100, height: 20, fontSize: 11 },
-  { key: "amount", label: "Amount", type: "CURRENCY" as const, x: 200, y: 515, width: 150, height: 20, fontSize: 11 },
+  { key: "invoice_no", label: "Invoice No", type: "TEXT" as const, x: 55, y: 659, width: 150, height: 14, fontSize: 10 },
+  { key: "invoice_date", label: "Invoice Date", type: "DATE" as const, x: 345, y: 659, width: 90, height: 14, fontSize: 10 },
+  { key: "consignee", label: "Consignee", type: "TEXT" as const, x: 55, y: 590, width: 452, height: 14, fontSize: 10 },
+  { key: "description", label: "Description", type: "TEXT" as const, x: 65, y: 510, width: 270, height: 14, fontSize: 10 },
+  { key: "quantity", label: "Quantity", type: "NUMBER" as const, x: 370, y: 510, width: 35, height: 14, fontSize: 10 },
+  { key: "amount", label: "Amount", type: "CURRENCY" as const, x: 435, y: 510, width: 65, height: 14, fontSize: 10 },
 ];
 
 export async function createSampleTemplate() {
