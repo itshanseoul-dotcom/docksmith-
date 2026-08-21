@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition, type PointerEvent } from "react";
+import Link from "next/link";
 import * as pdfjsLib from "pdfjs-dist";
 import type { PDFDocumentProxy, RenderTask } from "pdfjs-dist";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { saveTemplateFields, type FieldInput } from "./actions";
@@ -235,6 +236,12 @@ export function MappingStudio({
       <div className="flex flex-1 flex-col overflow-hidden">
         <div className="flex items-center gap-2 border-b px-4 py-2">
           <span className="text-sm font-medium">{templateName}</span>
+          <Link
+            href={`/templates/${templateId}/versions`}
+            className={buttonVariants({ variant: "ghost", size: "sm" })}
+          >
+            버전 기록
+          </Link>
           <div className="ml-auto flex items-center gap-2">
             <Button
               type="button"

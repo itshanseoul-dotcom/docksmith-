@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import type { FieldType } from "@/generated/prisma/client";
+import type { FieldType, Prisma } from "@/generated/prisma/client";
 
 export type SaveFieldsState = { error: string } | undefined;
 
@@ -55,6 +55,9 @@ export async function saveTemplateFields(
     prisma.templateField.deleteMany({ where: { templateId } }),
     prisma.templateField.createMany({
       data: fields.map((f) => ({ ...f, templateId })),
+    }),
+    prisma.templateFieldVersion.create({
+      data: { templateId, fields: fields as unknown as Prisma.InputJsonValue },
     }),
   ]);
 

@@ -45,6 +45,7 @@ model Template {
   sourceFileUrl  String
   pageCount      Int             @default(1)
   fields         TemplateField[]
+  fieldVersions  TemplateFieldVersion[]
   jobs           GenerationJob[]
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
@@ -72,6 +73,19 @@ model TemplateField {
 
   @@unique([templateId, key])
   @@map("template_fields")
+}
+
+// 매핑 저장할 때마다 그 시점의 필드 전체를 스냅샷으로 남긴다. 실수로 매핑을 잘못
+// 고쳐도 이전 저장 시점으로 되돌릴 수 있어야 실무에서 믿고 쓸 수 있다(ROADMAP V1).
+model TemplateFieldVersion {
+  id         String   @id @default(cuid())
+  template   Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  templateId String
+  fields     Json
+  createdAt  DateTime @default(now())
+
+  @@index([templateId])
+  @@map("template_field_versions")
 }
 
 // 생성된 PDF 파일 자체는 저장하지 않는다 — 브라우저에서 생성 즉시 다운로드되므로
