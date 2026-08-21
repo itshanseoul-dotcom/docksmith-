@@ -68,6 +68,7 @@ model TemplateField {
   width      Float
   height     Float
   fontSize   Float     @default(10)
+  fixedValue String?
 
   @@unique([templateId, key])
   @@map("template_fields")

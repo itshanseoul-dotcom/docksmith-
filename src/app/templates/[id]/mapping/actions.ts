@@ -17,6 +17,7 @@ export interface FieldInput {
   width: number;
   height: number;
   fontSize: number;
+  fixedValue: string | null;
 }
 
 export async function saveTemplateFields(

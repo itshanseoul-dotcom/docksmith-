@@ -48,6 +48,7 @@ export function CsvMatcher({
   const workerRef = useRef<Worker | null>(null);
 
   const remaining = Math.max(0, monthlyLimit - usedThisMonth);
+  const mappableFields = fields.filter((f) => f.fixedValue === null);
 
   function handleFile(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -70,7 +71,7 @@ export function CsvMatcher({
         const [header, ...dataRows] = rows;
         setHeaders(header);
         setCsvRows(dataRows);
-        setMapping(autoMatchColumns(fields, aliases, header));
+        setMapping(autoMatchColumns(mappableFields, aliases, header));
       },
       error: (err) => {
         setParseError(`CSV를 읽을 수 없습니다: ${err.message}`);
@@ -78,7 +79,8 @@ export function CsvMatcher({
     });
   }
 
-  const matchedCount = Object.values(mapping).filter((v) => v !== null).length;
+  const matchedCount = mappableFields.filter((f) => mapping[f.key] !== null && mapping[f.key] !== undefined)
+    .length;
   const isGenerating = progress !== null && progress.completed < progress.total;
   const exceedsQuota = csvRows.length > remaining;
 
@@ -109,6 +111,10 @@ export function CsvMatcher({
     const mappedRows: Record<string, string>[] = csvRows.map((row) => {
       const record: Record<string, string> = {};
       for (const field of fields) {
+        if (field.fixedValue !== null) {
+          record[field.key] = field.fixedValue;
+          continue;
+        }
         const colIndex = mapping[field.key];
         record[field.key] = colIndex !== null && colIndex !== undefined ? row[colIndex] ?? "" : "";
       }
@@ -193,8 +199,10 @@ export function CsvMatcher({
       {headers && (
         <>
           <p className="text-sm text-muted-foreground">
-            {fileName} · {csvRows.length}개 행 감지됨 · {matchedCount}/{fields.length}개 필드
+            {fileName} · {csvRows.length}개 행 감지됨 · {matchedCount}/{mappableFields.length}개 필드
             자동 매칭
+            {fields.length > mappableFields.length &&
+              ` · 고정값 ${fields.length - mappableFields.length}개`}
           </p>
 
           <table className="w-full text-sm">
@@ -209,24 +217,30 @@ export function CsvMatcher({
                 <tr key={field.key} className="border-b">
                   <td className="py-2">{field.label}</td>
                   <td className="py-2">
-                    <select
-                      value={mapping[field.key] ?? ""}
-                      onChange={(e) =>
-                        setMapping((prev) => ({
-                          ...prev,
-                          [field.key]:
-                            e.target.value === "" ? null : Number(e.target.value),
-                        }))
-                      }
-                      className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
-                    >
-                      <option value="">선택 안 함</option>
-                      {headers.map((h, i) => (
-                        <option key={i} value={i}>
-                          {h}
-                        </option>
-                      ))}
-                    </select>
+                    {field.fixedValue !== null ? (
+                      <span className="text-sm text-muted-foreground">
+                        고정값: {field.fixedValue || "(빈 값)"}
+                      </span>
+                    ) : (
+                      <select
+                        value={mapping[field.key] ?? ""}
+                        onChange={(e) =>
+                          setMapping((prev) => ({
+                            ...prev,
+                            [field.key]:
+                              e.target.value === "" ? null : Number(e.target.value),
+                          }))
+                        }
+                        className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+                      >
+                        <option value="">선택 안 함</option>
+                        {headers.map((h, i) => (
+                          <option key={i} value={i}>
+                            {h}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </td>
                 </tr>
               ))}

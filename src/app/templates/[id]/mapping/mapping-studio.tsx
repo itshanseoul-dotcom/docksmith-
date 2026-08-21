@@ -186,6 +186,7 @@ export function MappingStudio({
         type: "TEXT",
         page,
         fontSize: 10,
+        fixedValue: null,
         ...pdfRect,
       };
       setFields((prev) => [...prev, newField]);
@@ -222,6 +223,7 @@ export function MappingStudio({
           width: f.width,
           height: f.height,
           fontSize: f.fontSize,
+          fixedValue: f.fixedValue,
         }))
       );
       if (result?.error) setSaveError(result.error);
@@ -381,6 +383,30 @@ export function MappingStudio({
                   </option>
                 ))}
               </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={selectedField.fixedValue !== null}
+                  onChange={(e) =>
+                    updateSelected({ fixedValue: e.target.checked ? "" : null })
+                  }
+                />
+                고정값 사용
+              </label>
+              {selectedField.fixedValue !== null && (
+                <>
+                  <Input
+                    value={selectedField.fixedValue}
+                    onChange={(e) => updateSelected({ fixedValue: e.target.value })}
+                    placeholder="모든 행에 공통으로 들어갈 값"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    이 필드는 CSV 컬럼과 매칭하지 않고 항상 이 값을 채웁니다.
+                  </p>
+                </>
+              )}
             </div>
             <p className="text-xs text-muted-foreground">key: {selectedField.key}</p>
             <Button

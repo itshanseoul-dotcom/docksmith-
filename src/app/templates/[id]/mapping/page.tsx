@@ -53,6 +53,7 @@ export default async function TemplateMappingPage({
           width: f.width,
           height: f.height,
           fontSize: f.fontSize,
+          fixedValue: f.fixedValue,
         }))}
       />
     </div>

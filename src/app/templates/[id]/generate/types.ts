@@ -8,4 +8,5 @@ export interface FieldSpec {
   width: number;
   height: number;
   fontSize: number;
+  fixedValue: string | null;
 }

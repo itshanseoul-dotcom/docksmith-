@@ -56,6 +56,7 @@ export default async function GenerateTemplatePage({
           width: f.width,
           height: f.height,
           fontSize: f.fontSize,
+          fixedValue: f.fixedValue,
         }))}
         aliases={aliases}
         usedThisMonth={usedThisMonth}
