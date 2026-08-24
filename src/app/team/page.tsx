@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { createInvite, revokeInvite, removeMember } from "./actions";
+import { revokeApiKey } from "./api-key-actions";
+import { ApiKeyForm } from "./api-key-form";
 
 const ROLE_LABEL: Record<string, string> = {
   OWNER: "소유자",
@@ -32,7 +34,7 @@ export default async function TeamPage() {
 
   const isOwner = membership.role === "OWNER";
 
-  const [members, invites] = await Promise.all([
+  const [members, invites, apiKeys] = await Promise.all([
     prisma.membership.findMany({
       where: { organizationId: membership.organizationId },
       orderBy: { createdAt: "asc" },
@@ -40,6 +42,12 @@ export default async function TeamPage() {
     isOwner
       ? prisma.organizationInvite.findMany({
           where: { organizationId: membership.organizationId, acceptedAt: null },
+          orderBy: { createdAt: "desc" },
+        })
+      : Promise.resolve([]),
+    isOwner
+      ? prisma.apiKey.findMany({
+          where: { organizationId: membership.organizationId, revokedAt: null },
           orderBy: { createdAt: "desc" },
         })
       : Promise.resolve([]),
@@ -129,6 +137,54 @@ export default async function TeamPage() {
               ))}
             </ul>
           )}
+        </section>
+      )}
+
+      {isOwner && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-sm font-medium text-muted-foreground">공개 API 키</h2>
+          <p className="text-xs text-muted-foreground">
+            다른 프로그램이 사람 없이 직접 문서를 생성하게 하고 싶을 때 씁니다. 한 번
+            호출당 최대 25행, 이번 달 무료 한도는 브라우저 생성과 공유됩니다.
+          </p>
+          <ApiKeyForm />
+
+          {apiKeys.length > 0 && (
+            <ul className="flex flex-col gap-2">
+              {apiKeys.map((key) => (
+                <li
+                  key={key.id}
+                  className="flex items-center justify-between rounded-md border p-3"
+                >
+                  <div>
+                    <p className="text-sm font-medium">{key.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {key.keyPrefix}… ·{" "}
+                      {key.lastUsedAt
+                        ? `마지막 사용 ${key.lastUsedAt.toLocaleString("ko-KR")}`
+                        : "아직 사용 안 함"}
+                    </p>
+                  </div>
+                  <form action={revokeApiKey.bind(null, key.id)}>
+                    <Button type="submit" variant="destructive" size="sm">
+                      폐기
+                    </Button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <details className="rounded-lg border p-3 text-xs text-muted-foreground">
+            <summary className="cursor-pointer font-medium">사용법 보기</summary>
+            <pre className="mt-2 overflow-x-auto rounded bg-muted p-2">
+              {`curl -X POST ${origin}/api/v1/templates/TEMPLATE_ID/generate \\
+  -H "Authorization: Bearer dk_..." \\
+  -H "Content-Type: application/json" \\
+  -d '{"rows":[{"invoice_no":"INV-001"}]}' \\
+  -o results.zip`}
+            </pre>
+          </details>
         </section>
       )}
     </div>

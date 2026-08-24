@@ -1,4 +1,4 @@
-import ExcelJS from "exceljs";
+import { fillXlsxRow } from "./fill-xlsx";
 import type { FieldSpec } from "./types";
 
 export interface GenerateRequest {
@@ -18,8 +18,6 @@ interface WorkerLike {
 
 const worker = self as unknown as WorkerLike;
 
-const TAG_PATTERN = /\{([a-zA-Z0-9_]+)\}/g;
-
 addEventListener("message", async (event: MessageEvent<GenerateRequest>) => {
   const { templateBytes, fields, rows } = event.data;
   const total = rows.length;
@@ -31,19 +29,7 @@ addEventListener("message", async (event: MessageEvent<GenerateRequest>) => {
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     try {
-      const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.load(templateBytes);
-
-      workbook.eachSheet((sheet) => {
-        sheet.eachRow((sheetRow) => {
-          sheetRow.eachCell((cell) => {
-            if (typeof cell.value !== "string" || !cell.value.includes("{")) return;
-            cell.value = cell.value.replace(TAG_PATTERN, (_match, key: string) => row[key] ?? "");
-          });
-        });
-      });
-
-      const bytes = (await workbook.xlsx.writeBuffer()) as ArrayBuffer;
+      const bytes = await fillXlsxRow(templateBytes, row);
       worker.postMessage(
         { type: "row-done", index: i, total, fileName: `row-${i + 1}.xlsx`, bytes },
         [bytes]

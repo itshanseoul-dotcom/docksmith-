@@ -1,5 +1,4 @@
-import Docxtemplater from "docxtemplater";
-import PizZip from "pizzip";
+import { fillDocxRow } from "./fill-docx";
 import type { FieldSpec } from "./types";
 
 export interface GenerateRequest {
@@ -26,16 +25,7 @@ addEventListener("message", (event: MessageEvent<GenerateRequest>) => {
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     try {
-      const zip = new PizZip(templateBytes);
-      const doc = new Docxtemplater(zip, { nullGetter: () => "" });
-
-      const data: Record<string, string> = {};
-      for (const field of fields) {
-        data[field.key] = row[field.key] ?? "";
-      }
-      doc.render(data);
-
-      const bytes = doc.getZip().generate({ type: "arraybuffer" }) as ArrayBuffer;
+      const bytes = fillDocxRow(templateBytes, fields, row);
       worker.postMessage(
         { type: "row-done", index: i, total, fileName: `row-${i + 1}.docx`, bytes },
         [bytes]

@@ -48,6 +48,7 @@ model Organization {
   templates       Template[]
   memberships     Membership[]
   invites         OrganizationInvite[]
+  apiKeys         ApiKey[]
 
   @@map("organizations")
 }
@@ -77,6 +78,23 @@ model OrganizationInvite {
 
   @@index([organizationId])
   @@map("organization_invites")
+}
+
+// 평문 키는 절대 저장하지 않는다 — 발급 시 한 번만 보여주고 이후로는 keyHash로만
+// 대조한다. keyPrefix는 목록 화면에서 "어느 키인지" 구분하는 용도(비밀 아님).
+model ApiKey {
+  id             String       @id @default(cuid())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String
+  name           String
+  keyPrefix      String
+  keyHash        String       @unique
+  createdAt      DateTime     @default(now())
+  lastUsedAt     DateTime?
+  revokedAt      DateTime?
+
+  @@index([organizationId])
+  @@map("api_keys")
 }
 
 model Template {
