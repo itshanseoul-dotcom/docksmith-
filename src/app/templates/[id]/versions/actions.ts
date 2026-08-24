@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { getTemplateWithRole, canManageTemplates } from "@/lib/membership";
 import type { Prisma } from "@/generated/prisma/client";
 import type { FieldInput } from "../mapping/actions";
 
@@ -16,12 +17,13 @@ export async function restoreTemplateFieldVersion(templateId: string, versionId:
     redirect("/login");
   }
 
+  const result = await getTemplateWithRole(templateId, user.id);
+  if (!result || !canManageTemplates(result.role)) {
+    redirect(`/templates/${templateId}/versions`);
+  }
+
   const version = await prisma.templateFieldVersion.findFirst({
-    where: {
-      id: versionId,
-      templateId,
-      template: { organization: { ownerAuthUserId: user.id } },
-    },
+    where: { id: versionId, templateId },
   });
 
   if (!version) {

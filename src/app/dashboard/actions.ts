@@ -29,7 +29,7 @@ export async function createSampleTemplate() {
     redirect("/login");
   }
 
-  const organization = await ensureOrganization(user.id, user.email ?? user.id);
+  const { organization } = await ensureOrganization(user.id, user.email ?? user.id);
 
   const pdfBytes = await readFile(
     path.join(process.cwd(), "public/samples/sample-commercial-invoice.pdf")

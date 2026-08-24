@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { getMembershipForUser, canManageTemplates } from "@/lib/membership";
 import { MappingStudioLoader } from "./mapping-studio-loader";
 
 export default async function TemplateMappingPage({
@@ -19,13 +20,22 @@ export default async function TemplateMappingPage({
     redirect("/login");
   }
 
+  const membership = await getMembershipForUser(user.id);
+  if (!membership) {
+    redirect("/dashboard");
+  }
+
   const template = await prisma.template.findFirst({
-    where: { id, organization: { ownerAuthUserId: user.id } },
+    where: { id, organizationId: membership.organizationId },
     include: { fields: true },
   });
 
   if (!template) {
     notFound();
+  }
+
+  if (!canManageTemplates(membership.role)) {
+    redirect(`/templates/${id}/generate`);
   }
 
   const { data: signed, error } = await supabase.storage

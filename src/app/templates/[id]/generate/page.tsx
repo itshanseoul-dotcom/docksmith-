@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { getMembershipForUser } from "@/lib/membership";
 import { getMonthlyUsage, MONTHLY_FREE_LIMIT } from "@/lib/usage";
 import { CsvMatcher } from "./csv-matcher";
 
@@ -20,8 +21,13 @@ export default async function GenerateTemplatePage({
     redirect("/login");
   }
 
+  const membership = await getMembershipForUser(user.id);
+  if (!membership) {
+    redirect("/dashboard");
+  }
+
   const template = await prisma.template.findFirst({
-    where: { id, organization: { ownerAuthUserId: user.id } },
+    where: { id, organizationId: membership.organizationId },
     include: { fields: true },
   });
 

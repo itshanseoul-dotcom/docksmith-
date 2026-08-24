@@ -24,16 +24,53 @@ enum JobStatus {
   FAILED
 }
 
-// MVP는 1 조직 = 1 사용자(Supabase Auth의 auth.users.id를 그대로 소유자로 사용).
-// 여러 명이 함께 쓰는 팀 권한은 V1에서 Membership 모델로 확장한다.
+enum MembershipRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+// MVP는 1 조직 = 1 사용자였지만(ownerAuthUserId), V1부터는 Membership이 "이 사용자가
+// 지금 속한 org"의 실제 소스다. 한 사용자는 항상 정확히 하나의 org에만 속한다(초대를
+// 수락하면 Membership.organizationId가 새 org로 옮겨갈 뿐, 이전 org는 그대로 남는다 —
+// 다시 초대받거나 로그인 시 자기 org로 복귀할 수 있다).
 model Organization {
-  id              String     @id @default(cuid())
+  id              String                 @id @default(cuid())
   name            String
-  ownerAuthUserId String     @unique
-  createdAt       DateTime   @default(now())
+  ownerAuthUserId String                 @unique
+  createdAt       DateTime               @default(now())
   templates       Template[]
+  memberships     Membership[]
+  invites         OrganizationInvite[]
 
   @@map("organizations")
+}
+
+model Membership {
+  id             String         @id @default(cuid())
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String
+  authUserId     String         @unique
+  email          String
+  role           MembershipRole @default(OWNER)
+  createdAt      DateTime       @default(now())
+
+  @@index([organizationId])
+  @@map("memberships")
+}
+
+// 이메일 발송 없이 링크 공유로 초대한다 — token이 그 자체로 초대 비밀값이다.
+model OrganizationInvite {
+  id             String         @id @default(cuid())
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String
+  role           MembershipRole @default(MEMBER)
+  token          String         @unique
+  createdAt      DateTime       @default(now())
+  acceptedAt     DateTime?
+
+  @@index([organizationId])
+  @@map("organization_invites")
 }
 
 model Template {

@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { getMembershipForUser } from "@/lib/membership";
 
 interface RecordGenerationJobInput {
   sourceFileName: string;
@@ -23,8 +24,11 @@ export async function recordGenerationJob(
 
   if (!user) return;
 
+  const membership = await getMembershipForUser(user.id);
+  if (!membership) return;
+
   const template = await prisma.template.findFirst({
-    where: { id: templateId, organization: { ownerAuthUserId: user.id } },
+    where: { id: templateId, organizationId: membership.organizationId },
   });
 
   if (!template) return;

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { PDFDocument } from "pdf-lib";
 import { createClient } from "@/lib/supabase/server";
 import { ensureOrganization } from "@/lib/organization";
+import { canManageTemplates } from "@/lib/membership";
 import { prisma } from "@/lib/prisma";
 
 export type UploadFormState = { error: string } | undefined;
@@ -48,7 +49,11 @@ export async function uploadTemplate(
     return { error: "PDF 파일을 읽을 수 없습니다. 손상되었거나 지원하지 않는 형식입니다." };
   }
 
-  const organization = await ensureOrganization(user.id, user.email ?? user.id);
+  const { organization, role } = await ensureOrganization(user.id, user.email ?? user.id);
+
+  if (!canManageTemplates(role)) {
+    return { error: "이 조직에서는 관리자만 템플릿을 만들 수 있습니다." };
+  }
 
   const safeFileName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, "_");
   // storage.objects RLS가 폴더 첫 세그먼트를 auth.uid()로 강제한다 (supabase/storage-setup.sql).

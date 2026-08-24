@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { getMembershipForUser, canManageTemplates } from "@/lib/membership";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { restoreTemplateFieldVersion } from "./actions";
 
@@ -21,12 +22,21 @@ export default async function TemplateVersionsPage({
     redirect("/login");
   }
 
+  const membership = await getMembershipForUser(user.id);
+  if (!membership) {
+    redirect("/dashboard");
+  }
+
   const template = await prisma.template.findFirst({
-    where: { id, organization: { ownerAuthUserId: user.id } },
+    where: { id, organizationId: membership.organizationId },
   });
 
   if (!template) {
     notFound();
+  }
+
+  if (!canManageTemplates(membership.role)) {
+    redirect(`/templates/${id}/generate`);
   }
 
   const versions = await prisma.templateFieldVersion.findMany({

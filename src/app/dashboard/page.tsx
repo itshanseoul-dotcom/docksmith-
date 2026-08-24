@@ -14,6 +14,13 @@ import {
 import { logout } from "@/app/login/actions";
 import { createSampleTemplate } from "./actions";
 import { getMonthlyUsage, MONTHLY_FREE_LIMIT } from "@/lib/usage";
+import { canManageTemplates } from "@/lib/membership";
+
+const ROLE_LABEL: Record<string, string> = {
+  OWNER: "소유자",
+  ADMIN: "관리자",
+  MEMBER: "멤버",
+};
 
 const JOB_STATUS_LABEL: Record<string, string> = {
   PENDING: "대기 중",
@@ -37,25 +44,28 @@ export default async function DashboardPage({
     redirect("/login");
   }
 
-  const organization = await prisma.organization.findUnique({
-    where: { ownerAuthUserId: user.id },
+  const membership = await prisma.membership.findUnique({
+    where: { authUserId: user.id },
+    include: { organization: true },
   });
 
-  const [templates, jobs, usedThisMonth] = organization
+  const [templates, jobs, usedThisMonth] = membership
     ? await Promise.all([
         prisma.template.findMany({
-          where: { organizationId: organization.id },
+          where: { organizationId: membership.organizationId },
           orderBy: { createdAt: "desc" },
         }),
         prisma.generationJob.findMany({
-          where: { template: { organizationId: organization.id } },
+          where: { template: { organizationId: membership.organizationId } },
           orderBy: { createdAt: "desc" },
           take: 10,
           include: { template: { select: { name: true } } },
         }),
-        getMonthlyUsage(organization.id),
+        getMonthlyUsage(membership.organizationId),
       ])
     : [[], [], 0];
+
+  const canManage = membership ? canManageTemplates(membership.role) : false;
 
   const usagePercent = Math.min(100, (usedThisMonth / MONTHLY_FREE_LIMIT) * 100);
   const usageBarColor = usagePercent >= 80 ? "bg-destructive" : "bg-primary";
@@ -65,13 +75,21 @@ export default async function DashboardPage({
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold">대시보드</h1>
-          <p className="text-sm text-muted-foreground">{user.email}</p>
+          <p className="text-sm text-muted-foreground">
+            {user.email}
+            {membership && ` · ${ROLE_LABEL[membership.role] ?? membership.role}`}
+          </p>
         </div>
-        <form action={logout}>
-          <Button variant="outline" type="submit">
-            로그아웃
-          </Button>
-        </form>
+        <div className="flex items-center gap-2">
+          <Link href="/team" className={buttonVariants({ variant: "outline" })}>
+            팀 관리
+          </Link>
+          <form action={logout}>
+            <Button variant="outline" type="submit">
+              로그아웃
+            </Button>
+          </form>
+        </div>
       </header>
 
       <section className="flex flex-col gap-2">
@@ -92,43 +110,53 @@ export default async function DashboardPage({
       <section className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-medium">내 템플릿</h2>
-          <Link href="/templates/new" className={buttonVariants({ variant: "default" })}>
-            새 템플릿 만들기
-          </Link>
+          {canManage && (
+            <Link href="/templates/new" className={buttonVariants({ variant: "default" })}>
+              새 템플릿 만들기
+            </Link>
+          )}
         </div>
 
         {templates.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
-              <p className="text-sm text-muted-foreground">
-                아직 템플릿이 없습니다. 첫 템플릿을 만들어보세요.
-              </p>
-              {sampleError && (
-                <p className="text-sm text-destructive">
-                  샘플 템플릿을 만드는 중 문제가 발생했습니다. 다시 시도해주세요.
+              {canManage ? (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    아직 템플릿이 없습니다. 첫 템플릿을 만들어보세요.
+                  </p>
+                  {sampleError && (
+                    <p className="text-sm text-destructive">
+                      샘플 템플릿을 만드는 중 문제가 발생했습니다. 다시 시도해주세요.
+                    </p>
+                  )}
+                  <Link href="/templates/new" className={buttonVariants({ variant: "default" })}>
+                    새 템플릿 만들기
+                  </Link>
+                  <div className="flex items-center gap-3">
+                    <form action={createSampleTemplate}>
+                      <button
+                        type="submit"
+                        className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+                      >
+                        샘플로 체험하기
+                      </button>
+                    </form>
+                    <span className="text-muted-foreground">·</span>
+                    <a
+                      href="/samples/sample-commercial-invoice.csv"
+                      download
+                      className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+                    >
+                      샘플 CSV 다운로드
+                    </a>
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  아직 템플릿이 없습니다. 관리자에게 템플릿 등록을 요청해주세요.
                 </p>
               )}
-              <Link href="/templates/new" className={buttonVariants({ variant: "default" })}>
-                새 템플릿 만들기
-              </Link>
-              <div className="flex items-center gap-3">
-                <form action={createSampleTemplate}>
-                  <button
-                    type="submit"
-                    className="text-sm text-muted-foreground underline-offset-4 hover:underline"
-                  >
-                    샘플로 체험하기
-                  </button>
-                </form>
-                <span className="text-muted-foreground">·</span>
-                <a
-                  href="/samples/sample-commercial-invoice.csv"
-                  download
-                  className="text-sm text-muted-foreground underline-offset-4 hover:underline"
-                >
-                  샘플 CSV 다운로드
-                </a>
-              </div>
             </CardContent>
           </Card>
         ) : (

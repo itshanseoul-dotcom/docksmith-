@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getMembershipForUser, canManageTemplates } from "@/lib/membership";
 import {
   Card,
   CardContent,
@@ -17,6 +18,11 @@ export default async function NewTemplatePage() {
 
   if (!user) {
     redirect("/login");
+  }
+
+  const membership = await getMembershipForUser(user.id);
+  if (membership && !canManageTemplates(membership.role)) {
+    redirect("/dashboard");
   }
 
   return (
