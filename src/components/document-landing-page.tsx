@@ -33,14 +33,17 @@ export function DocumentLandingPage({
   subheadline,
 }: DocumentLandingPageProps) {
   const steps = [
-    { title: "1. PDF 업로드", description: `쓰던 ${documentName} 양식을 그대로 올립니다.` },
     {
-      title: "2. 필드 클릭 매핑",
-      description: "값이 들어갈 자리를 클릭·드래그로 한 번만 표시합니다.",
+      title: "1. 파일 업로드",
+      description: `쓰던 ${documentName} PDF/Word/Excel 양식을 그대로 올립니다.`,
+    },
+    {
+      title: "2. 필드 표시",
+      description: "PDF는 클릭·드래그로, Word/Excel은 {필드명} 태그로 값 자리를 표시합니다.",
     },
     {
       title: "3. CSV 업로드 → 다운로드",
-      description: "행마다 채워진 PDF 수백 장이 ZIP으로 바로 다운로드됩니다.",
+      description: "행마다 채워진 문서 수백 개가 ZIP으로 바로 다운로드됩니다.",
     },
   ];
 
@@ -54,8 +57,8 @@ export function DocumentLandingPage({
       a: "지금 단계에서는 전부 무료로 쓸 수 있습니다.",
     },
     {
-      q: `기존에 쓰던 ${documentName} PDF 양식이 있는데 그대로 써도 되나요?`,
-      a: `네, 지금 쓰시는 ${documentName} PDF를 그대로 올려서 필드만 표시하면 됩니다.`,
+      q: `기존에 쓰던 ${documentName} PDF/Word/Excel 양식이 있는데 그대로 써도 되나요?`,
+      a: `네, 지금 쓰시는 ${documentName} 양식을 그대로 올려서 필드만 표시하면 됩니다.`,
     },
   ];
 
