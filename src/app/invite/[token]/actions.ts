@@ -3,8 +3,9 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { getMembershipForUser, isSoleOwnerOfOtherOrg } from "@/lib/membership";
 
-export async function acceptInvite(token: string) {
+export async function acceptInvite(token: string, formData: FormData) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -17,6 +18,12 @@ export async function acceptInvite(token: string) {
   const invite = await prisma.organizationInvite.findUnique({ where: { token } });
   if (!invite || invite.acceptedAt) {
     redirect(`/invite/${token}`);
+  }
+
+  const membership = await getMembershipForUser(user.id);
+  const risksOrphaningOwnOrg = await isSoleOwnerOfOtherOrg(membership, invite.organizationId);
+  if (risksOrphaningOwnOrg && formData.get("confirmLeave") !== "on") {
+    redirect(`/invite/${token}?error=confirm_required`);
   }
 
   await prisma.$transaction([

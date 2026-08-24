@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { getMembershipForUser, isSoleOwnerOfOtherOrg } from "@/lib/membership";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
@@ -19,10 +20,13 @@ const ROLE_LABEL: Record<string, string> = {
 
 export default async function InvitePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ token: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
   const { token } = await params;
+  const { error } = await searchParams;
 
   const invite = await prisma.organizationInvite.findUnique({
     where: { token },
@@ -70,6 +74,13 @@ export default async function InvitePage({
     );
   }
 
+  const membership = await getMembershipForUser(user.id);
+  const risksOrphaningOwnOrg = await isSoleOwnerOfOtherOrg(membership, invite.organizationId);
+  const currentOrgName = membership
+    ? (await prisma.organization.findUnique({ where: { id: membership.organizationId } }))
+        ?.name
+    : null;
+
   return (
     <div className="flex flex-1 items-center justify-center px-6">
       <Card className="w-full max-w-sm">
@@ -80,8 +91,31 @@ export default async function InvitePage({
             이 조직으로 옮겨집니다.
           </CardDescription>
         </CardHeader>
-        <CardFooter>
-          <form action={acceptInvite.bind(null, token)}>
+        <CardFooter className="flex flex-col items-stretch gap-3">
+          {risksOrphaningOwnOrg && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+              <p className="font-medium">주의: 지금 &quot;{currentOrgName}&quot;의 유일한 소유자입니다.</p>
+              <p className="mt-1 text-xs">
+                참여하면 그 조직에서 완전히 빠지게 되고, 소유자가 없어져서 이후로는
+                아무도 그 조직의 멤버·API 키·웹훅을 관리할 수 없습니다.
+              </p>
+            </div>
+          )}
+          {error === "confirm_required" && (
+            <p className="text-xs text-destructive">
+              체크박스를 선택해야 참여할 수 있습니다.
+            </p>
+          )}
+          <form
+            action={acceptInvite.bind(null, token)}
+            className="flex flex-col items-stretch gap-2"
+          >
+            {risksOrphaningOwnOrg && (
+              <label className="flex items-start gap-2 text-xs text-muted-foreground">
+                <input type="checkbox" name="confirmLeave" required className="mt-0.5" />
+                이해했습니다. &quot;{currentOrgName}&quot;의 소유권을 포기하고 참여합니다.
+              </label>
+            )}
             <Button type="submit">참여하기</Button>
           </form>
         </CardFooter>

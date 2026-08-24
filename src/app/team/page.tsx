@@ -7,7 +7,8 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { createInvite, revokeInvite, removeMember } from "./actions";
 import { revokeApiKey } from "./api-key-actions";
 import { ApiKeyForm } from "./api-key-form";
-import { createWebhook, deleteWebhook, toggleWebhook, sendTestWebhook } from "./webhook-actions";
+import { deleteWebhook, toggleWebhook, sendTestWebhook } from "./webhook-actions";
+import { WebhookForm } from "./webhook-form";
 
 const ROLE_LABEL: Record<string, string> = {
   OWNER: "소유자",
@@ -203,18 +204,7 @@ export default async function TeamPage() {
             Zapier의 &quot;Webhooks by Zapier&quot; 트리거, Make의 Webhooks 모듈 등에
             바로 연결할 수 있습니다. 재시도는 하지 않고 한 번만 보냅니다.
           </p>
-          <form action={createWebhook} className="flex items-center gap-2">
-            <input
-              type="url"
-              name="url"
-              placeholder="https://hooks.zapier.com/..."
-              required
-              className="h-9 flex-1 rounded-lg border border-input bg-transparent px-2.5 text-sm"
-            />
-            <Button type="submit" size="sm">
-              추가
-            </Button>
-          </form>
+          <WebhookForm />
 
           {webhooks.length > 0 && (
             <ul className="flex flex-col gap-2">

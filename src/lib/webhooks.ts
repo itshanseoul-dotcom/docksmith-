@@ -1,6 +1,7 @@
 import "server-only";
 import { createHmac } from "node:crypto";
 import { prisma } from "@/lib/prisma";
+import { isSafeWebhookUrl } from "@/lib/url-safety";
 
 interface GenerationCompletedPayload {
   event: "generation.completed";
@@ -21,21 +22,32 @@ function sign(secret: string, body: string): string {
 // 큐 없이 요청 안에서 바로 쏘고 끝낸다 — 실패해도 재시도하지 않는다(재시도까지
 // 하려면 Redis/큐가 필요해서 유지비가 든다). 응답을 기다리다 생성 흐름이 느려지지
 // 않도록 타임아웃을 짧게 두고, 실패는 lastStatus에만 남기고 절대 throw하지 않는다.
+//
+// 등록할 때도 주소를 검사하지만, DNS가 그 사이에 내부 주소로 바뀌는(리바인딩) 걸
+// 막으려면 "보내는 바로 그 순간"에도 다시 검사해야 한다 — 그래서 여기서 한 번 더
+// 확인한다. redirect: "manual"로 3xx를 따라가지 않는 것도 같은 이유(검사를 통과한
+// 주소가 검사 안 된 내부 주소로 리다이렉트시키는 걸 막음)다.
 async function send(webhook: { id: string; url: string; secret: string }, body: string) {
   let status: number | null = null;
-  try {
-    const res = await fetch(webhook.url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Docksmith-Signature": `sha256=${sign(webhook.secret, body)}`,
-      },
-      body,
-      signal: AbortSignal.timeout(5000),
-    });
-    status = res.status;
-  } catch {
+
+  if (!(await isSafeWebhookUrl(webhook.url))) {
     status = null;
+  } else {
+    try {
+      const res = await fetch(webhook.url, {
+        method: "POST",
+        redirect: "manual",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Docksmith-Signature": `sha256=${sign(webhook.secret, body)}`,
+        },
+        body,
+        signal: AbortSignal.timeout(5000),
+      });
+      status = res.status;
+    } catch {
+      status = null;
+    }
   }
 
   await prisma.webhook

@@ -17,6 +17,28 @@ export function canManageMembers(role: MembershipRole) {
   return role === "OWNER";
 }
 
+// 초대를 수락하면 Membership.authUserId가 새 org로 옮겨간다(1인 1org). 지금 어떤
+// org의 유일한 OWNER인데 그걸 모르고 다른 org 초대를 눌러버리면, 원래 org는 소유자가
+// 하나도 남지 않아 아무도 관리(초대/멤버 제거/API 키/웹훅)할 수 없게 된다 — 그래서
+// 이 경우에만 수락 전에 명시적 확인을 한 번 더 받는다.
+export async function isSoleOwnerOfOtherOrg(
+  membership: { id: string; organizationId: string; role: MembershipRole } | null,
+  otherOrganizationId: string
+): Promise<boolean> {
+  if (!membership || membership.role !== "OWNER") return false;
+  if (membership.organizationId === otherOrganizationId) return false;
+
+  const otherOwnerCount = await prisma.membership.count({
+    where: {
+      organizationId: membership.organizationId,
+      role: "OWNER",
+      NOT: { id: membership.id },
+    },
+  });
+
+  return otherOwnerCount === 0;
+}
+
 export async function getTemplateWithRole(templateId: string, authUserId: string) {
   const membership = await getMembershipForUser(authUserId);
   if (!membership) return null;
