@@ -15,8 +15,14 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url
 ).toString();
 
-export interface Field extends FieldInput {
+// 이 스튜디오는 PDF 템플릿에서만 쓰인다 — x/y/width/height가 항상 채워져 있다고
+// 보고(FieldInput 전체에서는 DOCX/XLSX 때문에 null 허용) 여기서는 좁혀서 쓴다.
+export interface Field extends Omit<FieldInput, "x" | "y" | "width" | "height"> {
   id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 const FIELD_TYPES: FieldType[] = ["TEXT", "NUMBER", "DATE", "CURRENCY"];

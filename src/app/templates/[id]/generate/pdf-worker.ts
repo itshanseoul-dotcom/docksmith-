@@ -53,6 +53,9 @@ addEventListener("message", async (event: MessageEvent<GenerateRequest>) => {
         if (!value) continue;
         const page = pages[field.page - 1];
         if (!page) continue;
+        if (field.x == null || field.y == null || field.width == null || field.height == null) {
+          continue;
+        }
 
         // 원본 템플릿이 실제 fillable PDF(예: FedEx 공식 양식)인 경우 필드 자리에
         // 회색 배경이 깔려있을 수 있다 — 값을 쓰기 전에 흰 배경을 먼저 덮어서

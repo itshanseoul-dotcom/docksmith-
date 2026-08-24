@@ -51,7 +51,8 @@ export default async function GenerateTemplatePage({
       <CsvMatcher
         templateId={template.id}
         templateName={template.name}
-        pdfUrl={signed.signedUrl}
+        fileUrl={signed.signedUrl}
+        fileType={template.fileType}
         fields={template.fields.map((f) => ({
           key: f.key,
           label: f.label,

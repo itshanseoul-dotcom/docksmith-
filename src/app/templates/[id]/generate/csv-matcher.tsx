@@ -8,11 +8,31 @@ import { autoMatchColumns, type AliasEntry } from "./matching";
 import type { FieldSpec } from "./types";
 import type { GenerateRequest, GenerateResponse } from "./pdf-worker";
 import { recordGenerationJob } from "./generation-actions";
+import type { TemplateFileType } from "@/generated/prisma/client";
+
+// webpack/turbopack이 new Worker(new URL(...))를 정적으로 분석해서 워커를 별도
+// 청크로 묶는다 — 경로가 리터럴이어야 인식되므로 변수로 뽑아서 재사용할 수 없다.
+function createGenerateWorker(fileType: TemplateFileType): Worker {
+  if (fileType === "DOCX") {
+    return new Worker(new URL("./docx-worker.ts", import.meta.url), { type: "module" });
+  }
+  if (fileType === "XLSX") {
+    return new Worker(new URL("./xlsx-worker.ts", import.meta.url), { type: "module" });
+  }
+  return new Worker(new URL("./pdf-worker.ts", import.meta.url), { type: "module" });
+}
+
+const GENERATE_LABEL: Record<TemplateFileType, string> = {
+  PDF: "PDF 일괄 생성",
+  DOCX: "Word 일괄 생성",
+  XLSX: "Excel 일괄 생성",
+};
 
 interface CsvMatcherProps {
   templateId: string;
   templateName: string;
-  pdfUrl: string;
+  fileUrl: string;
+  fileType: TemplateFileType;
   fields: FieldSpec[];
   aliases: AliasEntry[];
   usedThisMonth: number;
@@ -28,7 +48,8 @@ interface GenerationProgress {
 export function CsvMatcher({
   templateId,
   templateName,
-  pdfUrl,
+  fileUrl,
+  fileType,
   fields,
   aliases,
   usedThisMonth,
@@ -100,10 +121,10 @@ export function CsvMatcher({
 
     let templateBytes: ArrayBuffer;
     try {
-      const res = await fetch(pdfUrl);
+      const res = await fetch(fileUrl);
       templateBytes = await res.arrayBuffer();
     } catch {
-      setGenError("템플릿 PDF를 불러오지 못했습니다.");
+      setGenError("템플릿 파일을 불러오지 못했습니다.");
       setProgress(null);
       return;
     }
@@ -124,9 +145,7 @@ export function CsvMatcher({
     const zip = new JSZip();
     let successCount = 0;
 
-    const worker = new Worker(new URL("./pdf-worker.ts", import.meta.url), {
-      type: "module",
-    });
+    const worker = createGenerateWorker(fileType);
     workerRef.current = worker;
 
     worker.onmessage = (event: MessageEvent<GenerateResponse>) => {
@@ -150,7 +169,7 @@ export function CsvMatcher({
     };
 
     worker.onerror = () => {
-      setGenError("PDF 생성 중 오류가 발생했습니다.");
+      setGenError("생성 중 오류가 발생했습니다.");
       worker.terminate();
       workerRef.current = null;
       setProgress(null);
@@ -255,7 +274,7 @@ export function CsvMatcher({
               </p>
             )}
             <Button type="button" onClick={handleGenerateClick} disabled={isGenerating}>
-              {isGenerating ? "생성 중..." : "PDF 일괄 생성"}
+              {isGenerating ? "생성 중..." : GENERATE_LABEL[fileType]}
             </Button>
 
             {progress && (

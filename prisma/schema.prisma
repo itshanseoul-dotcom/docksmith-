@@ -30,15 +30,21 @@ enum MembershipRole {
   MEMBER
 }
 
+enum TemplateFileType {
+  PDF
+  DOCX
+  XLSX
+}
+
 // MVP는 1 조직 = 1 사용자였지만(ownerAuthUserId), V1부터는 Membership이 "이 사용자가
 // 지금 속한 org"의 실제 소스다. 한 사용자는 항상 정확히 하나의 org에만 속한다(초대를
 // 수락하면 Membership.organizationId가 새 org로 옮겨갈 뿐, 이전 org는 그대로 남는다 —
 // 다시 초대받거나 로그인 시 자기 org로 복귀할 수 있다).
 model Organization {
-  id              String                 @id @default(cuid())
+  id              String               @id @default(cuid())
   name            String
-  ownerAuthUserId String                 @unique
-  createdAt       DateTime               @default(now())
+  ownerAuthUserId String               @unique
+  createdAt       DateTime             @default(now())
   templates       Template[]
   memberships     Membership[]
   invites         OrganizationInvite[]
@@ -74,25 +80,27 @@ model OrganizationInvite {
 }
 
 model Template {
-  id             String          @id @default(cuid())
-  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id             String                 @id @default(cuid())
+  organization   Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   organizationId String
   name           String
   category       String?
   sourceFileUrl  String
-  pageCount      Int             @default(1)
+  fileType       TemplateFileType       @default(PDF)
+  pageCount      Int                    @default(1)
   fields         TemplateField[]
   fieldVersions  TemplateFieldVersion[]
   jobs           GenerationJob[]
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
 
   @@index([organizationId])
   @@map("templates")
 }
 
-// 매핑 스튜디오에서 클릭으로 지정한 필드 하나 = 한 행.
-// x/y/width/height는 PDF 페이지 좌표계 기준(pdf-lib 단위와 동일하게 저장).
+// 매핑 스튜디오에서 클릭으로 지정한 필드 하나 = 한 행. x/y/width/height는 PDF 페이지
+// 좌표계 기준(pdf-lib 단위와 동일하게 저장) — PDF 템플릿에만 쓰이고, DOCX/XLSX는
+// 문서 안의 {태그} 텍스트로 위치를 대신하므로 좌표가 없다(전부 null).
 model TemplateField {
   id         String    @id @default(cuid())
   template   Template  @relation(fields: [templateId], references: [id], onDelete: Cascade)
@@ -101,10 +109,10 @@ model TemplateField {
   label      String
   type       FieldType @default(TEXT)
   page       Int       @default(1)
-  x          Float
-  y          Float
-  width      Float
-  height     Float
+  x          Float?
+  y          Float?
+  width      Float?
+  height     Float?
   fontSize   Float     @default(10)
   fixedValue String?
 

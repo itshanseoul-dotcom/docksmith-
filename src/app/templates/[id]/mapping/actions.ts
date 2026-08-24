@@ -13,10 +13,10 @@ export interface FieldInput {
   label: string;
   type: FieldType;
   page: number;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
+  x: number | null;
+  y: number | null;
+  width: number | null;
+  height: number | null;
   fontSize: number;
   fixedValue: string | null;
 }

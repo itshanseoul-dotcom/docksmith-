@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { getMembershipForUser, canManageTemplates } from "@/lib/membership";
 import { MappingStudioLoader } from "./mapping-studio-loader";
+import { TagFieldEditor } from "./tag-field-editor";
 
 export default async function TemplateMappingPage({
   params,
@@ -38,6 +39,23 @@ export default async function TemplateMappingPage({
     redirect(`/templates/${id}/generate`);
   }
 
+  if (template.fileType !== "PDF") {
+    return (
+      <TagFieldEditor
+        templateId={template.id}
+        templateName={template.name}
+        fileType={template.fileType}
+        initialFields={template.fields.map((f) => ({
+          id: f.id,
+          key: f.key,
+          label: f.label,
+          type: f.type,
+          fixedValue: f.fixedValue,
+        }))}
+      />
+    );
+  }
+
   const { data: signed, error } = await supabase.storage
     .from("templates")
     .createSignedUrl(template.sourceFileUrl, 60 * 10);
@@ -58,10 +76,10 @@ export default async function TemplateMappingPage({
           label: f.label,
           type: f.type,
           page: f.page,
-          x: f.x,
-          y: f.y,
-          width: f.width,
-          height: f.height,
+          x: f.x ?? 0,
+          y: f.y ?? 0,
+          width: f.width ?? 0,
+          height: f.height ?? 0,
           fontSize: f.fontSize,
           fixedValue: f.fixedValue,
         }))}

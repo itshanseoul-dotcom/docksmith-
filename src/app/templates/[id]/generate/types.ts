@@ -3,10 +3,10 @@ export interface FieldSpec {
   label: string;
   type: "TEXT" | "NUMBER" | "DATE" | "CURRENCY";
   page: number;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
+  x: number | null;
+  y: number | null;
+  width: number | null;
+  height: number | null;
   fontSize: number;
   fixedValue: string | null;
 }
