@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import JSZip from "jszip";
@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { resolveApiKey } from "@/lib/api-key";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getMonthlyUsage, MONTHLY_FREE_LIMIT } from "@/lib/usage";
+import { dispatchGenerationCompleted } from "@/lib/webhooks";
 import { fillPdfRow } from "@/app/templates/[id]/generate/fill-pdf";
 import { fillDocxRow } from "@/app/templates/[id]/generate/fill-docx";
 import { fillXlsxRow } from "@/app/templates/[id]/generate/fill-xlsx";
@@ -152,6 +153,16 @@ export async function POST(
       status: successCount > 0 ? "COMPLETED" : "FAILED",
     },
   });
+
+  after(() =>
+    dispatchGenerationCompleted(apiKey.organizationId, {
+      templateId: template.id,
+      templateName: template.name,
+      rowCount: rows.length,
+      successCount,
+      source: "api",
+    })
+  );
 
   if (successCount === 0) {
     return NextResponse.json(

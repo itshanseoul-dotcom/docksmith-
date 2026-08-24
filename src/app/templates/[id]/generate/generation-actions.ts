@@ -1,8 +1,10 @@
 "use server";
 
+import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { getMembershipForUser } from "@/lib/membership";
+import { dispatchGenerationCompleted } from "@/lib/webhooks";
 
 interface RecordGenerationJobInput {
   sourceFileName: string;
@@ -41,4 +43,15 @@ export async function recordGenerationJob(
       status: input.successCount > 0 ? "COMPLETED" : "FAILED",
     },
   });
+
+  // 웹훅 전송은 응답을 기다리게 하지 않는다 — after()가 응답이 나간 뒤에 실행해준다.
+  after(() =>
+    dispatchGenerationCompleted(membership.organizationId, {
+      templateId: template.id,
+      templateName: template.name,
+      rowCount: input.rowCount,
+      successCount: input.successCount,
+      source: "browser",
+    })
+  );
 }

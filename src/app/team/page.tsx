@@ -7,6 +7,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { createInvite, revokeInvite, removeMember } from "./actions";
 import { revokeApiKey } from "./api-key-actions";
 import { ApiKeyForm } from "./api-key-form";
+import { createWebhook, deleteWebhook, toggleWebhook, sendTestWebhook } from "./webhook-actions";
 
 const ROLE_LABEL: Record<string, string> = {
   OWNER: "소유자",
@@ -34,7 +35,7 @@ export default async function TeamPage() {
 
   const isOwner = membership.role === "OWNER";
 
-  const [members, invites, apiKeys] = await Promise.all([
+  const [members, invites, apiKeys, webhooks] = await Promise.all([
     prisma.membership.findMany({
       where: { organizationId: membership.organizationId },
       orderBy: { createdAt: "asc" },
@@ -48,6 +49,12 @@ export default async function TeamPage() {
     isOwner
       ? prisma.apiKey.findMany({
           where: { organizationId: membership.organizationId, revokedAt: null },
+          orderBy: { createdAt: "desc" },
+        })
+      : Promise.resolve([]),
+    isOwner
+      ? prisma.webhook.findMany({
+          where: { organizationId: membership.organizationId },
           orderBy: { createdAt: "desc" },
         })
       : Promise.resolve([]),
@@ -185,6 +192,76 @@ export default async function TeamPage() {
   -o results.zip`}
             </pre>
           </details>
+        </section>
+      )}
+
+      {isOwner && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-sm font-medium text-muted-foreground">웹훅</h2>
+          <p className="text-xs text-muted-foreground">
+            문서 생성이 끝날 때마다(브라우저·API 둘 다) 지정한 주소로 알려드립니다.
+            Zapier의 &quot;Webhooks by Zapier&quot; 트리거, Make의 Webhooks 모듈 등에
+            바로 연결할 수 있습니다. 재시도는 하지 않고 한 번만 보냅니다.
+          </p>
+          <form action={createWebhook} className="flex items-center gap-2">
+            <input
+              type="url"
+              name="url"
+              placeholder="https://hooks.zapier.com/..."
+              required
+              className="h-9 flex-1 rounded-lg border border-input bg-transparent px-2.5 text-sm"
+            />
+            <Button type="submit" size="sm">
+              추가
+            </Button>
+          </form>
+
+          {webhooks.length > 0 && (
+            <ul className="flex flex-col gap-2">
+              {webhooks.map((webhook) => (
+                <li key={webhook.id} className="flex flex-col gap-2 rounded-md border p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="break-all text-sm font-medium">{webhook.url}</p>
+                    <span
+                      className={`shrink-0 text-xs ${
+                        webhook.active ? "text-primary" : "text-muted-foreground"
+                      }`}
+                    >
+                      {webhook.active ? "켜짐" : "꺼짐"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    서명 검증용 secret:{" "}
+                    <code className="rounded bg-muted px-1">{webhook.secret}</code>
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {webhook.lastTriggeredAt
+                      ? `마지막 전송 ${webhook.lastTriggeredAt.toLocaleString("ko-KR")} · 상태 ${
+                          webhook.lastStatus ?? "실패(응답 없음)"
+                        }`
+                      : "아직 전송된 적 없음"}
+                  </p>
+                  <div className="flex gap-2">
+                    <form action={sendTestWebhook.bind(null, webhook.id)}>
+                      <Button type="submit" variant="outline" size="sm">
+                        테스트 이벤트 보내기
+                      </Button>
+                    </form>
+                    <form action={toggleWebhook.bind(null, webhook.id, !webhook.active)}>
+                      <Button type="submit" variant="outline" size="sm">
+                        {webhook.active ? "끄기" : "켜기"}
+                      </Button>
+                    </form>
+                    <form action={deleteWebhook.bind(null, webhook.id)}>
+                      <Button type="submit" variant="destructive" size="sm">
+                        삭제
+                      </Button>
+                    </form>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       )}
     </div>
