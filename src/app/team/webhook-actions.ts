@@ -2,37 +2,18 @@
 
 import { randomBytes } from "node:crypto";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { getMembershipForUser, canManageMembers } from "@/lib/membership";
+import { requireOwnerMembership } from "@/lib/membership";
 import { dispatchTestEvent } from "@/lib/webhooks";
 import { isSafeWebhookUrl } from "@/lib/url-safety";
 
 export type CreateWebhookState = { error: string } | undefined;
 
-async function requireOwner() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
-
-  const membership = await getMembershipForUser(user.id);
-  if (!membership || !canManageMembers(membership.role)) {
-    return null;
-  }
-
-  return membership;
-}
-
 export async function createWebhook(
   _state: CreateWebhookState,
   formData: FormData
 ): Promise<CreateWebhookState> {
-  const membership = await requireOwner();
+  const membership = await requireOwnerMembership();
   if (!membership) {
     return { error: "웹훅은 소유자만 만들 수 있습니다." };
   }
@@ -60,7 +41,7 @@ export async function createWebhook(
 }
 
 export async function deleteWebhook(webhookId: string) {
-  const membership = await requireOwner();
+  const membership = await requireOwnerMembership();
   if (!membership) return;
 
   await prisma.webhook.deleteMany({
@@ -71,7 +52,7 @@ export async function deleteWebhook(webhookId: string) {
 }
 
 export async function toggleWebhook(webhookId: string, active: boolean) {
-  const membership = await requireOwner();
+  const membership = await requireOwnerMembership();
   if (!membership) return;
 
   await prisma.webhook.updateMany({
@@ -83,7 +64,7 @@ export async function toggleWebhook(webhookId: string, active: boolean) {
 }
 
 export async function sendTestWebhook(webhookId: string) {
-  const membership = await requireOwner();
+  const membership = await requireOwnerMembership();
   if (!membership) return;
 
   await dispatchTestEvent(webhookId, membership.organizationId);

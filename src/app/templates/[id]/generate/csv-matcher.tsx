@@ -5,8 +5,8 @@ import Papa from "papaparse";
 import JSZip from "jszip";
 import { Button } from "@/components/ui/button";
 import { autoMatchColumns, type AliasEntry } from "./matching";
-import type { FieldSpec } from "./types";
-import type { GenerateRequest, GenerateResponse } from "./pdf-worker";
+import { resolveFieldValue, type FieldSpec } from "./types";
+import type { GenerateRequest, GenerateResponse } from "./worker-protocol";
 import { recordGenerationJob } from "./generation-actions";
 import type { TemplateFileType } from "@/generated/prisma/client";
 
@@ -132,12 +132,9 @@ export function CsvMatcher({
     const mappedRows: Record<string, string>[] = csvRows.map((row) => {
       const record: Record<string, string> = {};
       for (const field of fields) {
-        if (field.fixedValue !== null) {
-          record[field.key] = field.fixedValue;
-          continue;
-        }
         const colIndex = mapping[field.key];
-        record[field.key] = colIndex !== null && colIndex !== undefined ? row[colIndex] ?? "" : "";
+        const csvValue = colIndex !== null && colIndex !== undefined ? row[colIndex] : undefined;
+        record[field.key] = resolveFieldValue(field, csvValue);
       }
       return record;
     });

@@ -6,12 +6,11 @@ import Docxtemplater from "docxtemplater";
 import createInspectModuleRaw from "docxtemplater/js/inspect-module.js";
 import PizZip from "pizzip";
 import ExcelJS from "exceljs";
+import { TAG_PATTERN } from "@/lib/tag-pattern";
 
 const createInspectModule = createInspectModuleRaw as unknown as () => {
   getAllTags(): Record<string, unknown>;
 };
-
-const TAG_PATTERN = /\{([a-zA-Z0-9_]+)\}/g;
 
 // {태그} 형식으로 이미 문서에 박아둔 필드명을 찾아낸다. 좌표 클릭 매핑이 필요 없는
 // 대신, 사용자가 Word/Excel에서 직접 {invoice_no} 같은 텍스트를 입력해둬야 한다.

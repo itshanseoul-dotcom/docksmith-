@@ -1,24 +1,7 @@
 import { fillPdfRow } from "./fill-pdf";
-import type { FieldSpec } from "./types";
+import { getWorkerSelf, type GenerateRequest } from "./worker-protocol";
 
-export interface GenerateRequest {
-  templateBytes: ArrayBuffer;
-  fields: FieldSpec[];
-  rows: Record<string, string>[];
-}
-
-export type GenerateResponse =
-  | { type: "row-done"; index: number; total: number; fileName: string; bytes: ArrayBuffer }
-  | { type: "row-error"; index: number; total: number; message: string }
-  | { type: "done" };
-
-interface WorkerLike {
-  postMessage(message: GenerateResponse, transfer?: Transferable[]): void;
-}
-
-// tsconfig의 lib에 "webworker"가 없어서(dom과 동시에 못 씀) self의 타입이 Window로
-// 잡힌다. postMessage 시그니처가 달라서 실제로 필요한 모양만 뽑아 캐스팅해서 쓴다.
-const worker = self as unknown as WorkerLike;
+const worker = getWorkerSelf();
 
 addEventListener("message", async (event: MessageEvent<GenerateRequest>) => {
   const { templateBytes, fields, rows } = event.data;

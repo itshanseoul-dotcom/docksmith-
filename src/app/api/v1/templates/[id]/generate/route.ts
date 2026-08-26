@@ -10,7 +10,7 @@ import { dispatchGenerationCompleted } from "@/lib/webhooks";
 import { fillPdfRow } from "@/app/templates/[id]/generate/fill-pdf";
 import { fillDocxRow } from "@/app/templates/[id]/generate/fill-docx";
 import { fillXlsxRow } from "@/app/templates/[id]/generate/fill-xlsx";
-import type { FieldSpec } from "@/app/templates/[id]/generate/types";
+import { resolveFieldValue, type FieldSpec } from "@/app/templates/[id]/generate/types";
 
 export const runtime = "nodejs";
 
@@ -19,10 +19,20 @@ export const runtime = "nodejs";
 // 브라우저 플로우(CSV 업로드)를 쓰면 된다.
 const MAX_ROWS_PER_REQUEST = 25;
 
+// 폰트 파일은 배포 후 바뀌지 않는 정적 자산이라, 웜 인스턴스 동안은 한 번만 읽으면
+// 된다 — 매 요청마다 디스크에서 다시 읽는 건 낭비다.
+let cachedKoreanFontBytes: ArrayBuffer | null = null;
+
 async function loadKoreanFontBytes(): Promise<ArrayBuffer> {
-  const fontPath = path.join(process.cwd(), "public/fonts/noto-sans-kr-400.woff");
-  const buffer = await readFile(fontPath);
-  return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+  if (!cachedKoreanFontBytes) {
+    const fontPath = path.join(process.cwd(), "public/fonts/noto-sans-kr-400.woff");
+    const buffer = await readFile(fontPath);
+    cachedKoreanFontBytes = buffer.buffer.slice(
+      buffer.byteOffset,
+      buffer.byteOffset + buffer.byteLength
+    );
+  }
+  return cachedKoreanFontBytes;
 }
 
 export async function POST(
@@ -36,10 +46,16 @@ export async function POST(
     return NextResponse.json({ error: "invalid or missing API key" }, { status: 401 });
   }
 
-  const template = await prisma.template.findFirst({
-    where: { id, organizationId: apiKey.organizationId },
-    include: { fields: true },
-  });
+  // 둘 다 apiKey.organizationId만 있으면 되는 독립적인 조회라 병렬로 보낸다 —
+  // 템플릿이 없는 요청에서는 usedThisMonth 조회가 그냥 버려지지만, 유효한 요청이
+  // 훨씬 많을 거라 왕복 한 번을 아끼는 쪽이 이득이다.
+  const [template, usedThisMonth] = await Promise.all([
+    prisma.template.findFirst({
+      where: { id, organizationId: apiKey.organizationId },
+      include: { fields: true },
+    }),
+    getMonthlyUsage(apiKey.organizationId),
+  ]);
   if (!template) {
     return NextResponse.json({ error: "template not found" }, { status: 404 });
   }
@@ -66,7 +82,6 @@ export async function POST(
   }
   const rows = body.rows as Record<string, string>[];
 
-  const usedThisMonth = await getMonthlyUsage(apiKey.organizationId);
   const remaining = Math.max(0, MONTHLY_FREE_LIMIT - usedThisMonth);
   if (rows.length > remaining) {
     return NextResponse.json(
@@ -108,11 +123,10 @@ export async function POST(
     fixedValue: f.fixedValue,
   }));
 
-  // 고정값 필드는 브라우저 플로우(csv-matcher.tsx)와 동일하게 요청 값보다 우선한다.
   const mappedRows = rows.map((row) => {
     const record: Record<string, string> = {};
     for (const field of fields) {
-      record[field.key] = field.fixedValue ?? row[field.key] ?? "";
+      record[field.key] = resolveFieldValue(field, row[field.key]);
     }
     return record;
   });
@@ -145,24 +159,25 @@ export async function POST(
     }
   }
 
-  await prisma.generationJob.create({
-    data: {
-      templateId: template.id,
-      sourceFileName: "API",
-      rowCount: rows.length,
-      status: successCount > 0 ? "COMPLETED" : "FAILED",
-    },
-  });
+  // 응답(zip 또는 에러)이 나가는 데 필요 없는 뒷정리라서 응답 이후로 미룬다.
+  after(async () => {
+    await prisma.generationJob.create({
+      data: {
+        templateId: template.id,
+        sourceFileName: "API",
+        rowCount: rows.length,
+        status: successCount > 0 ? "COMPLETED" : "FAILED",
+      },
+    });
 
-  after(() =>
-    dispatchGenerationCompleted(apiKey.organizationId, {
+    await dispatchGenerationCompleted(apiKey.organizationId, {
       templateId: template.id,
       templateName: template.name,
       rowCount: rows.length,
       successCount,
       source: "api",
-    })
-  );
+    });
+  });
 
   if (successCount === 0) {
     return NextResponse.json(

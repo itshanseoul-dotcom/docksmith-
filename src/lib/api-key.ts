@@ -1,5 +1,6 @@
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
+import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 const KEY_PREFIX = "dk_";
@@ -30,10 +31,13 @@ export async function resolveApiKey(authorizationHeader: string | null) {
 
   if (!apiKey || apiKey.revokedAt) return null;
 
-  await prisma.apiKey.update({
-    where: { id: apiKey.id },
-    data: { lastUsedAt: new Date() },
-  });
+  // 응답에 필요한 정보가 아니라서 요청을 막지 않는다.
+  after(() =>
+    prisma.apiKey.update({
+      where: { id: apiKey.id },
+      data: { lastUsedAt: new Date() },
+    })
+  );
 
   return apiKey;
 }

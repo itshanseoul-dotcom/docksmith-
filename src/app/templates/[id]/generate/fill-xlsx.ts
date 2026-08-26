@@ -1,6 +1,5 @@
 import ExcelJS from "exceljs";
-
-const TAG_PATTERN = /\{([a-zA-Z0-9_]+)\}/g;
+import { TAG_PATTERN } from "@/lib/tag-pattern";
 
 export async function fillXlsxRow(
   templateBytes: ArrayBuffer,

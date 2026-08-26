@@ -1,22 +1,7 @@
 import { fillDocxRow } from "./fill-docx";
-import type { FieldSpec } from "./types";
+import { getWorkerSelf, type GenerateRequest } from "./worker-protocol";
 
-export interface GenerateRequest {
-  templateBytes: ArrayBuffer;
-  fields: FieldSpec[];
-  rows: Record<string, string>[];
-}
-
-export type GenerateResponse =
-  | { type: "row-done"; index: number; total: number; fileName: string; bytes: ArrayBuffer }
-  | { type: "row-error"; index: number; total: number; message: string }
-  | { type: "done" };
-
-interface WorkerLike {
-  postMessage(message: GenerateResponse, transfer?: Transferable[]): void;
-}
-
-const worker = self as unknown as WorkerLike;
+const worker = getWorkerSelf();
 
 addEventListener("message", (event: MessageEvent<GenerateRequest>) => {
   const { templateBytes, fields, rows } = event.data;

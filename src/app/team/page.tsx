@@ -9,12 +9,7 @@ import { revokeApiKey } from "./api-key-actions";
 import { ApiKeyForm } from "./api-key-form";
 import { deleteWebhook, toggleWebhook, sendTestWebhook } from "./webhook-actions";
 import { WebhookForm } from "./webhook-form";
-
-const ROLE_LABEL: Record<string, string> = {
-  OWNER: "소유자",
-  ADMIN: "관리자",
-  MEMBER: "멤버",
-};
+import { getMembershipForUser, ROLE_LABEL } from "@/lib/membership";
 
 export default async function TeamPage() {
   const supabase = await createClient();
@@ -26,9 +21,7 @@ export default async function TeamPage() {
     redirect("/login");
   }
 
-  const membership = await prisma.membership.findUnique({
-    where: { authUserId: user.id },
-  });
+  const membership = await getMembershipForUser(user.id);
 
   if (!membership) {
     redirect("/dashboard");

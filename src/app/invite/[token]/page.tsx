@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { getMembershipForUser, isSoleOwnerOfOtherOrg } from "@/lib/membership";
+import { isSoleOwnerOfOtherOrg, ROLE_LABEL } from "@/lib/membership";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
@@ -11,12 +11,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { acceptInvite } from "./actions";
-
-const ROLE_LABEL: Record<string, string> = {
-  OWNER: "소유자",
-  ADMIN: "관리자",
-  MEMBER: "멤버",
-};
 
 export default async function InvitePage({
   params,
@@ -74,12 +68,12 @@ export default async function InvitePage({
     );
   }
 
-  const membership = await getMembershipForUser(user.id);
+  const membership = await prisma.membership.findUnique({
+    where: { authUserId: user.id },
+    include: { organization: { select: { name: true } } },
+  });
   const risksOrphaningOwnOrg = await isSoleOwnerOfOtherOrg(membership, invite.organizationId);
-  const currentOrgName = membership
-    ? (await prisma.organization.findUnique({ where: { id: membership.organizationId } }))
-        ?.name
-    : null;
+  const currentOrgName = membership?.organization.name ?? null;
 
   return (
     <div className="flex flex-1 items-center justify-center px-6">

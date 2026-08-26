@@ -14,13 +14,7 @@ import {
 import { logout } from "@/app/login/actions";
 import { createSampleTemplate } from "./actions";
 import { getMonthlyUsage, MONTHLY_FREE_LIMIT } from "@/lib/usage";
-import { canManageTemplates } from "@/lib/membership";
-
-const ROLE_LABEL: Record<string, string> = {
-  OWNER: "소유자",
-  ADMIN: "관리자",
-  MEMBER: "멤버",
-};
+import { canManageTemplates, getMembershipForUser, ROLE_LABEL } from "@/lib/membership";
 
 const JOB_STATUS_LABEL: Record<string, string> = {
   PENDING: "대기 중",
@@ -44,10 +38,7 @@ export default async function DashboardPage({
     redirect("/login");
   }
 
-  const membership = await prisma.membership.findUnique({
-    where: { authUserId: user.id },
-    include: { organization: true },
-  });
+  const membership = await getMembershipForUser(user.id);
 
   const [templates, jobs, usedThisMonth] = membership
     ? await Promise.all([

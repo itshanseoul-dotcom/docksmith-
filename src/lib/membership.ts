@@ -1,9 +1,38 @@
 import "server-only";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { createClient } from "@/lib/supabase/server";
 import type { MembershipRole } from "@/generated/prisma/client";
+
+export const ROLE_LABEL: Record<MembershipRole, string> = {
+  OWNER: "소유자",
+  ADMIN: "관리자",
+  MEMBER: "멤버",
+};
 
 export function getMembershipForUser(authUserId: string) {
   return prisma.membership.findUnique({ where: { authUserId } });
+}
+
+// 팀/API 키/웹훅 관리 화면들의 서버 액션이 전부 "로그인 + OWNER"를 요구한다 —
+// 로그인 안 됐으면 로그인으로 보내고, OWNER가 아니면 null을 반환해서 호출부가
+// 각자의 방식으로 처리하게 한다(에러 메시지 반환 또는 그냥 조용히 무시).
+export async function requireOwnerMembership() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const membership = await getMembershipForUser(user.id);
+  if (!membership || !canManageMembers(membership.role)) {
+    return null;
+  }
+
+  return membership;
 }
 
 // OWNER/ADMIN은 템플릿을 만들고 매핑을 고칠 수 있다. MEMBER는 이미 만들어진
