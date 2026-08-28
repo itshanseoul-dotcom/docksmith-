@@ -208,3 +208,21 @@ model ColumnAlias {
   @@index([canonicalKey])
   @@map("column_alias_dictionary")
 }
+
+// Sentry 없이 자체 DB에 에러를 기록한다 — 에러 건수가 늘어도 별도 요금이 붙지
+// 않는다(우리 DB 저장 비용뿐). 전용 조회 화면은 없고 필요할 때 Prisma Studio 등으로
+// 직접 확인한다. organizationId는 참조 무결성 없는 단순 문자열 — org가 삭제돼도
+// 그 org에서 있었던 에러 기록 자체는 남아있어야 하기 때문이다.
+model ErrorLog {
+  id             String   @id @default(cuid())
+  source         String // "server" | "client"
+  message        String
+  stack          String?
+  digest         String? // Next.js가 서버 에러에 붙이는 식별자 — 배포 로그와 대조용
+  url            String?
+  organizationId String?
+  createdAt      DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("error_logs")
+}

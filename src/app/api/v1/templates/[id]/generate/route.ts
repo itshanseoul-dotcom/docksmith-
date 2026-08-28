@@ -7,6 +7,7 @@ import { resolveApiKey } from "@/lib/api-key";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getMonthlyUsage, MONTHLY_FREE_LIMIT } from "@/lib/usage";
 import { dispatchGenerationCompleted } from "@/lib/webhooks";
+import { logError } from "@/lib/error-log";
 import { fillPdfRow } from "@/app/templates/[id]/generate/fill-pdf";
 import { fillDocxRow } from "@/app/templates/[id]/generate/fill-docx";
 import { fillXlsxRow } from "@/app/templates/[id]/generate/fill-xlsx";
@@ -35,7 +36,10 @@ async function loadKoreanFontBytes(): Promise<ArrayBuffer> {
   return cachedKoreanFontBytes;
 }
 
-export async function POST(
+// 이 안의 모든 "예상 가능한" 실패(잘못된 키, 없는 템플릿, 잘못된 요청 본문 등)는
+// 이미 각자 try/catch로 구조화된 에러 응답을 준다. 바깥의 POST()는 그 외에 정말
+// 예상 못 한 버그가 새 나갔을 때만 잡아서 기록하는 안전망이다.
+async function handlePost(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -200,4 +204,21 @@ export async function POST(
       "X-Generation-Errors": String(errors.length),
     },
   });
+}
+
+export async function POST(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    return await handlePost(request, context);
+  } catch (err) {
+    await logError({
+      source: "server",
+      message: err instanceof Error ? err.message : "unexpected error in generate route",
+      stack: err instanceof Error ? (err.stack ?? null) : null,
+      url: request.url,
+    });
+    return NextResponse.json({ error: "internal server error" }, { status: 500 });
+  }
 }
