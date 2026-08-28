@@ -1,9 +1,10 @@
 "use client";
 
 import { useRef, useState, useTransition, type ChangeEvent } from "react";
+import Link from "next/link";
 import Papa from "papaparse";
 import JSZip from "jszip";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { autoMatchColumns, type AliasEntry } from "./matching";
 import { resolveFieldValue, type FieldSpec } from "./types";
 import type { GenerateRequest, GenerateResponse } from "./worker-protocol";
@@ -36,7 +37,7 @@ interface CsvMatcherProps {
   fields: FieldSpec[];
   aliases: AliasEntry[];
   usedThisMonth: number;
-  monthlyLimit: number;
+  monthlyLimit: number | null;
 }
 
 interface GenerationProgress {
@@ -68,7 +69,7 @@ export function CsvMatcher({
   const [, startRecording] = useTransition();
   const workerRef = useRef<Worker | null>(null);
 
-  const remaining = Math.max(0, monthlyLimit - usedThisMonth);
+  const remaining = monthlyLimit === null ? Infinity : Math.max(0, monthlyLimit - usedThisMonth);
   const mappableFields = fields.filter((f) => f.fixedValue === null);
 
   function handleFile(e: ChangeEvent<HTMLInputElement>) {
@@ -204,7 +205,8 @@ export function CsvMatcher({
           CSV를 올리면 컬럼을 필드에 자동으로 맞춰봅니다. 안 맞은 건 직접 골라주세요.
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          이번 달 생성: {usedThisMonth}/{monthlyLimit}건 (무료)
+          이번 달 생성: {usedThisMonth}
+          {monthlyLimit === null ? "건 (무제한)" : `/${monthlyLimit}건`}
         </p>
       </div>
 
@@ -319,15 +321,15 @@ export function CsvMatcher({
             className="flex w-full max-w-sm flex-col gap-3 rounded-lg bg-background p-6 shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-base font-semibold">무료 한도를 넘었습니다</h2>
+            <h2 className="text-base font-semibold">이번 달 한도를 넘었습니다</h2>
             <p className="text-sm text-muted-foreground">
-              이번 달 무료로 생성할 수 있는 건수는 {monthlyLimit}건이고, 이미{" "}
-              {usedThisMonth}건을 사용해서 남은 건수는 {remaining}건입니다. 이 CSV는{" "}
-              {csvRows.length}건이라 한도를 넘습니다.
+              이번 달 생성할 수 있는 건수는 {monthlyLimit}건이고, 이미 {usedThisMonth}건을
+              사용해서 남은 건수는 {remaining}건입니다. 이 CSV는 {csvRows.length}건이라
+              한도를 넘습니다.
             </p>
-            <Button type="button" disabled title="Beta 2.2(Stripe 연동)에서 연결됩니다">
-              업그레이드
-            </Button>
+            <Link href="/billing" className={buttonVariants({ variant: "default" })}>
+              요금제 업그레이드
+            </Link>
             <button
               type="button"
               onClick={() => setShowLimitModal(false)}

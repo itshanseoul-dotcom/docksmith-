@@ -36,6 +36,13 @@ enum TemplateFileType {
   XLSX
 }
 
+enum PlanTier {
+  FREE
+  STARTER
+  PRO
+  TEAM
+}
+
 // MVP는 1 조직 = 1 사용자였지만(ownerAuthUserId), V1부터는 Membership이 "이 사용자가
 // 지금 속한 org"의 실제 소스다. 한 사용자는 항상 정확히 하나의 org에만 속한다(초대를
 // 수락하면 Membership.organizationId가 새 org로 옮겨갈 뿐, 이전 org는 그대로 남는다 —
@@ -50,6 +57,15 @@ model Organization {
   invites         OrganizationInvite[]
   apiKeys         ApiKey[]
   webhooks        Webhook[]
+
+  // 카드 정보는 우리 서버를 절대 거치지 않는다(Stripe Checkout/Customer Portal이
+  // 전부 처리) — 여기 저장하는 건 "지금 어느 플랜인지"를 판단하는 데 필요한
+  // 참조값뿐이다. planTier는 Stripe 웹훅이 도착할 때만 갱신된다(진실의 원천은 Stripe).
+  planTier                 PlanTier  @default(FREE)
+  stripeCustomerId         String?   @unique
+  stripeSubscriptionId     String?   @unique
+  stripeSubscriptionStatus String?
+  currentPeriodEnd         DateTime?
 
   @@map("organizations")
 }

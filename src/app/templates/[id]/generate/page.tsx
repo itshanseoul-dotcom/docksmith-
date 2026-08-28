@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { getMembershipForUser } from "@/lib/membership";
-import { getMonthlyUsage, MONTHLY_FREE_LIMIT } from "@/lib/usage";
+import { getMonthlyUsage, getPlanLimit } from "@/lib/usage";
 import { CsvMatcher } from "./csv-matcher";
 
 export default async function GenerateTemplatePage({
@@ -43,8 +43,11 @@ export default async function GenerateTemplatePage({
     notFound();
   }
 
-  const aliases = await prisma.columnAlias.findMany();
-  const usedThisMonth = await getMonthlyUsage(template.organizationId);
+  const [aliases, usedThisMonth, monthlyLimit] = await Promise.all([
+    prisma.columnAlias.findMany(),
+    getMonthlyUsage(template.organizationId),
+    getPlanLimit(template.organizationId),
+  ]);
 
   return (
     <div className="flex flex-1 flex-col">
@@ -67,7 +70,7 @@ export default async function GenerateTemplatePage({
         }))}
         aliases={aliases}
         usedThisMonth={usedThisMonth}
-        monthlyLimit={MONTHLY_FREE_LIMIT}
+        monthlyLimit={monthlyLimit}
       />
     </div>
   );

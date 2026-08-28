@@ -5,7 +5,7 @@ import JSZip from "jszip";
 import { prisma } from "@/lib/prisma";
 import { resolveApiKey } from "@/lib/api-key";
 import { createServiceClient } from "@/lib/supabase/service";
-import { getMonthlyUsage, MONTHLY_FREE_LIMIT } from "@/lib/usage";
+import { getMonthlyUsage, getPlanLimit } from "@/lib/usage";
 import { dispatchGenerationCompleted } from "@/lib/webhooks";
 import { logError } from "@/lib/error-log";
 import { fillPdfRow } from "@/app/templates/[id]/generate/fill-pdf";
@@ -53,12 +53,13 @@ async function handlePost(
   // 둘 다 apiKey.organizationId만 있으면 되는 독립적인 조회라 병렬로 보낸다 —
   // 템플릿이 없는 요청에서는 usedThisMonth 조회가 그냥 버려지지만, 유효한 요청이
   // 훨씬 많을 거라 왕복 한 번을 아끼는 쪽이 이득이다.
-  const [template, usedThisMonth] = await Promise.all([
+  const [template, usedThisMonth, planLimit] = await Promise.all([
     prisma.template.findFirst({
       where: { id, organizationId: apiKey.organizationId },
       include: { fields: true },
     }),
     getMonthlyUsage(apiKey.organizationId),
+    getPlanLimit(apiKey.organizationId),
   ]);
   if (!template) {
     return NextResponse.json({ error: "template not found" }, { status: 404 });
@@ -86,11 +87,11 @@ async function handlePost(
   }
   const rows = body.rows as Record<string, string>[];
 
-  const remaining = Math.max(0, MONTHLY_FREE_LIMIT - usedThisMonth);
+  const remaining = planLimit === null ? Infinity : Math.max(0, planLimit - usedThisMonth);
   if (rows.length > remaining) {
     return NextResponse.json(
       {
-        error: `이번 달 남은 무료 생성 건수(${remaining}건)보다 요청한 행 수(${rows.length}건)가 많습니다.`,
+        error: `이번 달 남은 생성 건수(${remaining}건)보다 요청한 행 수(${rows.length}건)가 많습니다.`,
       },
       { status: 402 }
     );

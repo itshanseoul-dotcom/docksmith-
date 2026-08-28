@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/card";
 import { logout } from "@/app/login/actions";
 import { createSampleTemplate } from "./actions";
-import { getMonthlyUsage, MONTHLY_FREE_LIMIT } from "@/lib/usage";
+import { getMonthlyUsage, PLAN_LABEL, PLAN_LIMITS } from "@/lib/usage";
 import { canManageTemplates, getMembershipForUser, ROLE_LABEL } from "@/lib/membership";
 
 const JOB_STATUS_LABEL: Record<string, string> = {
@@ -40,7 +40,7 @@ export default async function DashboardPage({
 
   const membership = await getMembershipForUser(user.id);
 
-  const [templates, jobs, usedThisMonth] = membership
+  const [templates, jobs, usedThisMonth, organization] = membership
     ? await Promise.all([
         prisma.template.findMany({
           where: { organizationId: membership.organizationId },
@@ -53,12 +53,19 @@ export default async function DashboardPage({
           include: { template: { select: { name: true } } },
         }),
         getMonthlyUsage(membership.organizationId),
+        prisma.organization.findUnique({
+          where: { id: membership.organizationId },
+          select: { planTier: true },
+        }),
       ])
-    : [[], [], 0];
+    : [[], [], 0, null];
 
   const canManage = membership ? canManageTemplates(membership.role) : false;
 
-  const usagePercent = Math.min(100, (usedThisMonth / MONTHLY_FREE_LIMIT) * 100);
+  const planTier = organization?.planTier ?? "FREE";
+  const monthlyLimit = PLAN_LIMITS[planTier];
+  const usagePercent =
+    monthlyLimit === null ? 0 : Math.min(100, (usedThisMonth / monthlyLimit) * 100);
   const usageBarColor = usagePercent >= 80 ? "bg-destructive" : "bg-primary";
 
   return (
@@ -72,6 +79,9 @@ export default async function DashboardPage({
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Link href="/billing" className={buttonVariants({ variant: "outline" })}>
+            요금제
+          </Link>
           <Link href="/team" className={buttonVariants({ variant: "outline" })}>
             팀 관리
           </Link>
@@ -85,17 +95,19 @@ export default async function DashboardPage({
 
       <section className="flex flex-col gap-2">
         <div className="flex items-center justify-between text-sm">
-          <span className="font-medium">이번 달 사용량</span>
+          <span className="font-medium">이번 달 사용량 · {PLAN_LABEL[planTier]} 플랜</span>
           <span className="text-muted-foreground">
-            {usedThisMonth}/{MONTHLY_FREE_LIMIT}건 (무료)
+            {monthlyLimit === null ? `${usedThisMonth}건 (무제한)` : `${usedThisMonth}/${monthlyLimit}건`}
           </span>
         </div>
-        <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-          <div
-            className={`h-full transition-all ${usageBarColor}`}
-            style={{ width: `${usagePercent}%` }}
-          />
-        </div>
+        {monthlyLimit !== null && (
+          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className={`h-full transition-all ${usageBarColor}`}
+              style={{ width: `${usagePercent}%` }}
+            />
+          </div>
+        )}
       </section>
 
       <section className="flex flex-col gap-4">

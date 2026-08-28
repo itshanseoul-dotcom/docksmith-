@@ -1,9 +1,21 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
+import type { PlanTier } from "@/generated/prisma/client";
 
-// ROADMAP 2.1 — Stripe 없이 "왜 돈을 내야 하는지"의 경계선만 먼저 긋는다.
-// 플랜별 한도로 넓히는 건 2.2(Stripe 연동)에서.
-export const MONTHLY_FREE_LIMIT = 20;
+// null = 무제한. ROADMAP 2.2(Stripe) 가격표 그대로 — docs/PRD.md 12장.
+export const PLAN_LIMITS: Record<PlanTier, number | null> = {
+  FREE: 20,
+  STARTER: 500,
+  PRO: null,
+  TEAM: null,
+};
+
+export const PLAN_LABEL: Record<PlanTier, string> = {
+  FREE: "Free",
+  STARTER: "Starter",
+  PRO: "Pro",
+  TEAM: "Team",
+};
 
 export async function getMonthlyUsage(organizationId: string): Promise<number> {
   const now = new Date();
@@ -18,4 +30,12 @@ export async function getMonthlyUsage(organizationId: string): Promise<number> {
   });
 
   return result._sum.rowCount ?? 0;
+}
+
+export async function getPlanLimit(organizationId: string): Promise<number | null> {
+  const org = await prisma.organization.findUnique({
+    where: { id: organizationId },
+    select: { planTier: true },
+  });
+  return PLAN_LIMITS[org?.planTier ?? "FREE"];
 }
