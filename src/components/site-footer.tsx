@@ -21,7 +21,8 @@ export function SiteFooter() {
         </div>
         <p>
           {BUSINESS_INFO.serviceName} · 대표 {BUSINESS_INFO.representativeName} · 사업자등록번호{" "}
-          {BUSINESS_INFO.registrationNumber} · {BUSINESS_INFO.address}
+          {BUSINESS_INFO.registrationNumber} · 통신판매업신고번호{" "}
+          {BUSINESS_INFO.mailOrderSalesNumber} · {BUSINESS_INFO.address}
         </p>
         <p>
           문의: {BUSINESS_INFO.email} · {BUSINESS_INFO.phone}

@@ -17,6 +17,16 @@ export const PLAN_LABEL: Record<PlanTier, string> = {
   TEAM: "Team",
 };
 
+// 원래 $9/$29/$79 가격표를 1,450원 환율 기준으로 원화 환산한 값 — 한국 PG(포트원/
+// KG이니시스/NHN KCP)는 원화로만 결제받으므로, 화면에 보여주는 가격과 실제 청구
+// 금액이 반드시 이 값으로 일치해야 한다(PG 심사에서 "임의가격" 여부를 확인함).
+export const PLAN_PRICE_KRW: Record<PlanTier, number> = {
+  FREE: 0,
+  STARTER: 13_050,
+  PRO: 42_050,
+  TEAM: 114_550,
+};
+
 export async function getMonthlyUsage(organizationId: string): Promise<number> {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);

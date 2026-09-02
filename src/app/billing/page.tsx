@@ -3,7 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { getMembershipForUser, canManageMembers } from "@/lib/membership";
-import { getMonthlyUsage, PLAN_LABEL, PLAN_LIMITS } from "@/lib/usage";
+import { getMonthlyUsage, PLAN_LABEL, PLAN_LIMITS, PLAN_PRICE_KRW } from "@/lib/usage";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
@@ -14,14 +14,6 @@ import {
 } from "@/components/ui/card";
 import { createCheckoutSession, createBillingPortalSession } from "./actions";
 import { SiteFooter } from "@/components/site-footer";
-import type { PlanTier } from "@/generated/prisma/client";
-
-const PLAN_PRICE_LABEL: Record<PlanTier, string> = {
-  FREE: "$0/월",
-  STARTER: "$9/월",
-  PRO: "$29/월",
-  TEAM: "$79/월",
-};
 
 export default async function BillingPage({
   searchParams,
@@ -97,8 +89,10 @@ export default async function BillingPage({
                 <CardHeader>
                   <CardTitle>{PLAN_LABEL[plan]}</CardTitle>
                   <CardDescription>
-                    {PLAN_PRICE_LABEL[plan]} ·{" "}
-                    {PLAN_LIMITS[plan] === null ? "무제한" : `월 ${PLAN_LIMITS[plan]}건`}
+                    {PLAN_PRICE_KRW[plan] === 0
+                      ? "무료"
+                      : `${PLAN_PRICE_KRW[plan].toLocaleString("ko-KR")}원/월`}{" "}
+                    · {PLAN_LIMITS[plan] === null ? "무제한" : `월 ${PLAN_LIMITS[plan]}건`}
                   </CardDescription>
                 </CardHeader>
                 <CardFooter>
@@ -133,7 +127,8 @@ export default async function BillingPage({
       )}
 
       <p className="text-xs text-muted-foreground">
-        Team 플랜($79/월, 팀 공유·다수 시트)은 준비 중입니다.
+        Team 플랜({PLAN_PRICE_KRW.TEAM.toLocaleString("ko-KR")}원/월, 팀 공유·다수 시트)은
+        준비 중입니다.
       </p>
 
       <SiteFooter />

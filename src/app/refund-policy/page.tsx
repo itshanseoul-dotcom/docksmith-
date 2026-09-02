@@ -11,6 +11,15 @@ export default function RefundPolicyPage() {
       <h1 className="text-lg font-semibold">Docksmith 환불정책</h1>
 
       <section>
+        <h2 className="font-medium">서비스 제공 기간</h2>
+        <p className="mt-1 text-muted-foreground">
+          Docksmith는 실물 배송이 없는 온라인 소프트웨어 서비스입니다. 결제가
+          완료되면 별도의 배송 절차 없이 즉시 해당 요금제 기능을 이용할 수
+          있으며, 매월 결제일부터 다음 결제일 전날까지 1개월 단위로 제공됩니다.
+        </p>
+      </section>
+
+      <section>
         <h2 className="font-medium">1. 청약철회</h2>
         <p className="mt-1 text-muted-foreground">
           유료 플랜을 처음 결제한 경우, 결제일로부터 7일 이내에는 서비스를
