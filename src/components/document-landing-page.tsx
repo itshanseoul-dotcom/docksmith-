@@ -6,6 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { SiteFooter } from "@/components/site-footer";
 
 interface DocumentLandingPageProps {
   documentName: string;
@@ -54,7 +55,7 @@ export function DocumentLandingPage({
     },
     {
       q: "무료인가요?",
-      a: "지금 단계에서는 전부 무료로 쓸 수 있습니다.",
+      a: "월 20건까지는 무료로 쓸 수 있고, 더 많이 쓰시려면 유료 플랜으로 업그레이드하시면 됩니다.",
     },
     {
       q: `기존에 쓰던 ${documentName} PDF/Word/Excel 양식이 있는데 그대로 써도 되나요?`,
@@ -123,6 +124,8 @@ export function DocumentLandingPage({
           <CtaButton />
         </section>
       </main>
+
+      <SiteFooter />
     </div>
   );
 }

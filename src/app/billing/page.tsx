@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { createCheckoutSession, createBillingPortalSession } from "./actions";
+import { SiteFooter } from "@/components/site-footer";
 import type { PlanTier } from "@/generated/prisma/client";
 
 const PLAN_PRICE_LABEL: Record<PlanTier, string> = {
@@ -134,6 +135,8 @@ export default async function BillingPage({
       <p className="text-xs text-muted-foreground">
         Team 플랜($79/월, 팀 공유·다수 시트)은 준비 중입니다.
       </p>
+
+      <SiteFooter />
     </div>
   );
 }
