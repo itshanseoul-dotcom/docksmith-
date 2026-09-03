@@ -5,7 +5,13 @@ import { SiteFooter } from "@/components/site-footer";
 export default function Home() {
   return (
     <div className="flex flex-1 flex-col">
-      <header className="flex justify-end p-4">
+      <header className="flex items-center justify-end gap-4 p-4">
+        <Link
+          href="/pricing"
+          className="text-sm text-muted-foreground hover:text-foreground"
+        >
+          요금제
+        </Link>
         <Link
           href="/login"
           className="text-sm text-muted-foreground hover:text-foreground"

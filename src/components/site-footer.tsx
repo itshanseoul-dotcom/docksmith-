@@ -9,6 +9,9 @@ export function SiteFooter() {
     <footer className="border-t px-6 py-8 text-xs text-muted-foreground">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-3">
         <div className="flex flex-wrap gap-4">
+          <Link href="/pricing" className="hover:text-foreground hover:underline">
+            요금제
+          </Link>
           <Link href="/terms" className="hover:text-foreground hover:underline">
             이용약관
           </Link>
