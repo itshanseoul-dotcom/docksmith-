@@ -23,12 +23,13 @@ export function SiteFooter() {
           </Link>
         </div>
         <p>
-          {BUSINESS_INFO.serviceName} · 대표 {BUSINESS_INFO.representativeName} · 사업자등록번호{" "}
-          {BUSINESS_INFO.registrationNumber} · 통신판매업신고번호{" "}
-          {BUSINESS_INFO.mailOrderSalesNumber} · {BUSINESS_INFO.address}
+          상호명: {BUSINESS_INFO.serviceName} · 대표자: {BUSINESS_INFO.representativeName} ·
+          사업자등록번호: {BUSINESS_INFO.registrationNumber} · 통신판매업신고번호:{" "}
+          {BUSINESS_INFO.mailOrderSalesNumber}
         </p>
         <p>
-          문의: {BUSINESS_INFO.email} · {BUSINESS_INFO.phone}
+          주소: {BUSINESS_INFO.address} · 전화번호: {BUSINESS_INFO.phone} · 이메일:{" "}
+          {BUSINESS_INFO.email}
         </p>
       </div>
     </footer>
