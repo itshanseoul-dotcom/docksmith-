@@ -12,7 +12,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { createCheckoutSession, createBillingPortalSession } from "./actions";
+import { createBillingPortalSession, cancelPortOneSubscription } from "./actions";
+import { PortOneCheckoutButton } from "./portone-checkout-button";
+import { orderName, type SubscribablePlan } from "@/lib/portone";
 import { SiteFooter } from "@/components/site-footer";
 
 export default async function BillingPage({
@@ -43,7 +45,8 @@ export default async function BillingPage({
 
   const isOwner = canManageMembers(membership.role);
   const monthlyLimit = PLAN_LIMITS[organization.planTier];
-  const hasSubscription = organization.stripeSubscriptionId !== null;
+  const hasStripeSubscription = organization.stripeSubscriptionId !== null;
+  const hasPortoneSubscription = organization.portoneBillingKey !== null;
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-8 p-6">
@@ -68,11 +71,9 @@ export default async function BillingPage({
           이번 달 사용량: {usedThisMonth}
           {monthlyLimit === null ? "건 (무제한)" : `/${monthlyLimit}건`}
         </p>
-        {organization.stripeSubscriptionStatus && (
+        {organization.currentPeriodEnd && (
           <p className="text-xs text-muted-foreground">
-            구독 상태: {organization.stripeSubscriptionStatus}
-            {organization.currentPeriodEnd &&
-              ` · 다음 결제일 ${organization.currentPeriodEnd.toLocaleDateString("ko-KR")}`}
+            다음 결제일: {organization.currentPeriodEnd.toLocaleDateString("ko-KR")}
           </p>
         )}
       </section>
@@ -105,21 +106,28 @@ export default async function BillingPage({
                       현재 플랜
                     </Button>
                   ) : (
-                    <form action={createCheckoutSession.bind(null, plan)}>
-                      <Button type="submit" size="sm">
-                        선택하기
-                      </Button>
-                    </form>
+                    <PortOneCheckoutButton
+                      plan={plan as SubscribablePlan}
+                      orderName={orderName(plan)}
+                      customerEmail={membership.email}
+                    />
                   )}
                 </CardFooter>
               </Card>
             ))}
           </section>
 
-          {hasSubscription && (
+          {hasPortoneSubscription && (
+            <form action={cancelPortOneSubscription}>
+              <Button type="submit" variant="outline">
+                구독 해지
+              </Button>
+            </form>
+          )}
+          {hasStripeSubscription && (
             <form action={createBillingPortalSession}>
               <Button type="submit" variant="outline">
-                구독 관리 (결제수단 변경 / 해지)
+                구독 관리 (결제수단 변경 / 해지) — 이전 결제수단
               </Button>
             </form>
           )}

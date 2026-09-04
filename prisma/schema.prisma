@@ -67,6 +67,10 @@ model Organization {
   stripeSubscriptionStatus String?
   currentPeriodEnd         DateTime?
 
+  // 포트원(PortOne) 경유 KCP 정기결제 — 카드 정보는 우리 서버를 거치지 않고
+  // 포트원 위젯이 직접 받는다. billingKey가 있으면 이 값으로 매달 자동 청구된다.
+  portoneBillingKey String? @unique
+
   @@map("organizations")
 }
 
