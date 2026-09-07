@@ -443,9 +443,8 @@ export function MappingStudio({
                 placeholder="예: 송장번호, 수취인"
               />
               <p className="text-xs text-muted-foreground">
-                문서에 적힌 이름으로 입력하세요 — 필드가 여러 개일 때 나중에 CSV
-                컬럼을 연결하는 화면에서 어느 자리인지 구분하는 유일한 방법이라
-                꼭 필요합니다.
+                문서에 적힌 이름 그대로 입력하세요 — CSV 컬럼 연결 시 필드 구분
+                기준이 됩니다.
               </p>
             </div>
             <div className="flex flex-col gap-1.5">
