@@ -59,6 +59,16 @@ export async function saveTemplateFields(
     return { error: "파일명으로 쓸 필드는 하나만 선택할 수 있습니다." };
   }
 
+  // "고정값 사용" 체크는 했지만 값을 안 채운 경우 — 빈 문자열은 생성 시 "값 없음"과
+  // 똑같이 취급돼서 그 필드가 결과물에 아예 안 찍힌다. 체크만 하고 잊어버리기 쉬우니
+  // 저장 시점에 막는다.
+  const emptyFixedValueField = fields.find((f) => f.fixedValue === "");
+  if (emptyFixedValueField) {
+    return {
+      error: `"${emptyFixedValueField.label}" 필드의 고정값이 비어있습니다. 값을 입력하거나 고정값 사용을 해제해주세요.`,
+    };
+  }
+
   await prisma.$transaction([
     prisma.templateField.deleteMany({ where: { templateId } }),
     prisma.templateField.createMany({
