@@ -79,6 +79,15 @@ export function CsvMatcher({
     setGenError(null);
     setFileName(file.name);
 
+    // 파일 선택 창의 accept 필터는 강제가 아니라 힌트일 뿐이라, 사용자가 "모든 파일"로
+    // 엑셀(.xlsx) 등을 골라도 그대로 넘어온다 — CSV 파서에 억지로 넣으면 바이너리를
+    // 텍스트로 읽어서 알아볼 수 없는 값이 나오므로, 확장자부터 명확히 걸러낸다.
+    if (!file.name.toLowerCase().endsWith(".csv")) {
+      setParseError(`CSV 파일이 아닙니다: ${file.name}. 엑셀 파일이라면 "다른 이름으로 저장" > CSV 형식으로 먼저 변환해주세요.`);
+      setHeaders(null);
+      return;
+    }
+
     // CSV는 브라우저 밖으로 절대 안 나간다 — 이 파일 안에 실제 수취인 정보/금액이
     // 들어있을 수 있어서, 딕셔너리 매칭과 PDF 생성 모두 클라이언트에서만 처리한다.
     Papa.parse<string[]>(file, {
