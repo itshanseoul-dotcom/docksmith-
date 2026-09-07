@@ -74,8 +74,8 @@ export function MappingStudio({
   // 서식). pdf-lib의 drawText는 이 절대 좌표계를 그대로 쓰므로, 클릭 좌표를 PDF
   // 좌표로 바꿀 때 이 원점을 더해주지 않으면 값이 엉뚱한 위치에 찍힌다.
   const [pageOrigin, setPageOrigin] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [nearbyTextItems, setNearbyTextItems] = useState<
-    { x: number; y: number; width: number; fontSize: number }[]
+  const [pageTextItems, setPageTextItems] = useState<
+    { x: number; y: number; width: number; fontSize: number; str: string }[]
   >([]);
 
   const [fields, setFields] = useState<Field[]>(initialFields);
@@ -125,9 +125,9 @@ export function MappingStudio({
           if (!("transform" in item) || !item.str.trim()) return [];
           const [, , c, d, e, f] = item.transform;
           const fontSize = Math.hypot(c, d) || item.height || 10;
-          return [{ x: e, y: f, width: item.width, fontSize }];
+          return [{ x: e, y: f, width: item.width, fontSize, str: item.str.trim() }];
         });
-        setNearbyTextItems(items);
+        setPageTextItems(items);
       }
 
       const viewport = pdfPage.getViewport({ scale });
@@ -179,7 +179,7 @@ export function MappingStudio({
   // 쓴다 — 문서마다 라벨 글자 크기가 다른데 항상 10pt로 고정하면 눈에 띄게 어긋난다.
   function guessFontSize(centerX: number, centerY: number, boxHeight: number): number {
     let best: { fontSize: number; dist: number } | null = null;
-    for (const item of nearbyTextItems) {
+    for (const item of pageTextItems) {
       const itemCenterX = item.x + item.width / 2;
       const dist = Math.hypot(itemCenterX - centerX, item.y - centerY);
       if (!best || dist < best.dist) {
@@ -192,6 +192,32 @@ export function MappingStudio({
       return Math.round(best.fontSize * 10) / 10;
     }
     return Math.max(6, Math.round(boxHeight * 0.65 * 10) / 10);
+  }
+
+  // "필드 1/2/3" 같은 기본 이름은 사람이 CSV 매칭 화면에서 어느 자리인지 구분을 못 해
+  // 엉뚱한 컬럼을 연결하는 실수로 이어진다. 문서 서식은 대개 "라벨: ___" 형태라, 박스
+  // 왼쪽(같은 줄) 또는 바로 위에 있는 텍스트를 찾아 그걸 기본 이름으로 제안한다.
+  function guessLabel(pdfRect: { x: number; y: number; width: number; height: number }): string | null {
+    const centerY = pdfRect.y + pdfRect.height / 2;
+    const lineTolerance = Math.max(pdfRect.height, 6);
+
+    const toLeft = pageTextItems
+      .filter((item) => item.x + item.width <= pdfRect.x + 2 && Math.abs(item.y - centerY) <= lineTolerance)
+      .sort((a, b) => b.x - a.x)[0];
+    if (toLeft) return cleanLabelText(toLeft.str);
+
+    const above = pageTextItems
+      .filter((item) => item.y > pdfRect.y + pdfRect.height && item.x <= pdfRect.x + pdfRect.width)
+      .sort((a, b) => a.y - b.y)[0];
+    if (above && above.y - (pdfRect.y + pdfRect.height) <= lineTolerance * 3) {
+      return cleanLabelText(above.str);
+    }
+
+    return null;
+  }
+
+  function cleanLabelText(str: string): string {
+    return str.replace(/[:：_\-\s]+$/, "").trim();
   }
 
   function relativePoint(e: PointerEvent) {
@@ -229,7 +255,7 @@ export function MappingStudio({
     if (current && current.w >= MIN_DRAG_PX && current.h >= MIN_DRAG_PX) {
       const pdfRect = toPdfRect(current.x, current.y, current.w, current.h);
       const taken = new Set(fields.map((f) => f.key));
-      const label = `필드 ${fields.length + 1}`;
+      const label = guessLabel(pdfRect) || `필드 ${fields.length + 1}`;
       const fontSize = guessFontSize(
         pdfRect.x + pdfRect.width / 2,
         pdfRect.y + pdfRect.height / 2,
