@@ -1,11 +1,10 @@
-import type { Metadata } from "next";
 import { DocumentLandingPage } from "@/components/document-landing-page";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "급여명세서 생성기 — 500장을 30초에 | Docksmith",
-  description:
-    "쓰던 급여명세서 PDF/Excel 양식에 필드만 한 번 표시해두면, 다음부터는 CSV만 올려서 전 직원 급여명세서를 한 번에 만듭니다.",
-};
+export const metadata = pageMetadata(
+  "급여명세서 생성기 — 500장을 30초에 | Docksmith",
+  "쓰던 급여명세서 PDF/Excel 양식에 필드만 한 번 표시해두면, 다음부터는 CSV만 올려서 전 직원 급여명세서를 한 번에 만듭니다."
+);
 
 export default function PayslipGeneratorPage() {
   return (

@@ -1,9 +1,7 @@
-import type { Metadata } from "next";
 import { BUSINESS_INFO } from "@/lib/business-info";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "이용약관 | Docksmith",
-};
+export const metadata = pageMetadata("이용약관 | Docksmith", "Docksmith 서비스 이용약관입니다.");
 
 export default function TermsPage() {
   return (

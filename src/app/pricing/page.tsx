@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -10,10 +9,12 @@ import {
 } from "@/components/ui/card";
 import { PLAN_LABEL, PLAN_LIMITS, PLAN_PRICE_KRW } from "@/lib/usage";
 import { SiteFooter } from "@/components/site-footer";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "요금제 | Docksmith",
-};
+export const metadata = pageMetadata(
+  "요금제 | Docksmith",
+  "쓰던 PDF/Word/Excel 양식으로 대량 문서를 자동 생성하는 Docksmith의 요금제입니다. 무료로 월 20건까지 시작할 수 있습니다."
+);
 
 const PLAN_DESCRIPTION: Record<"FREE" | "STARTER" | "PRO" | "TEAM", string> = {
   FREE: "가볍게 사용해보기 좋은 무료 플랜입니다.",

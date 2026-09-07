@@ -1,9 +1,10 @@
-import type { Metadata } from "next";
 import { BUSINESS_INFO } from "@/lib/business-info";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "개인정보처리방침 | Docksmith",
-};
+export const metadata = pageMetadata(
+  "개인정보처리방침 | Docksmith",
+  "Docksmith 서비스의 개인정보처리방침입니다."
+);
 
 export default function PrivacyPage() {
   return (

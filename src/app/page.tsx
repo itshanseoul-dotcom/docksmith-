@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { SiteFooter } from "@/components/site-footer";
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata(
+  "Docksmith — 반복 문서 자동화",
+  "쓰던 PDF/Word/Excel 양식에 필드만 한 번 표시해두면, 다음부터는 CSV만 올려서 수백 장을 한 번에 만듭니다."
+);
 
 export default function Home() {
   return (

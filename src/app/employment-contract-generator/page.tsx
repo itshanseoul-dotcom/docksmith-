@@ -1,11 +1,10 @@
-import type { Metadata } from "next";
 import { DocumentLandingPage } from "@/components/document-landing-page";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "근로계약서 생성기 — 500장을 30초에 | Docksmith",
-  description:
-    "쓰던 근로계약서 양식에 필드만 한 번 표시해두면, 다음부터는 CSV만 올려서 여러 명의 근로계약서를 한 번에 만듭니다.",
-};
+export const metadata = pageMetadata(
+  "근로계약서 생성기 — 500장을 30초에 | Docksmith",
+  "쓰던 근로계약서 양식에 필드만 한 번 표시해두면, 다음부터는 CSV만 올려서 여러 명의 근로계약서를 한 번에 만듭니다."
+);
 
 export default function EmploymentContractGeneratorPage() {
   return (
