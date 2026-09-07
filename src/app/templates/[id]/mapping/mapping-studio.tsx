@@ -70,6 +70,13 @@ export function MappingStudio({
   const [page, setPage] = useState(1);
   const [scale, setScale] = useState(1.2);
   const [pageSize, setPageSize] = useState<{ width: number; height: number } | null>(null);
+  // 스캔/변환된 관공서 양식은 MediaBox 원점이 (0,0)이 아닌 경우가 흔하다(예: 세관
+  // 서식). pdf-lib의 drawText는 이 절대 좌표계를 그대로 쓰므로, 클릭 좌표를 PDF
+  // 좌표로 바꿀 때 이 원점을 더해주지 않으면 값이 엉뚱한 위치에 찍힌다.
+  const [pageOrigin, setPageOrigin] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [nearbyTextItems, setNearbyTextItems] = useState<
+    { x: number; y: number; width: number; fontSize: number }[]
+  >([]);
 
   const [fields, setFields] = useState<Field[]>(initialFields);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -104,6 +111,24 @@ export function MappingStudio({
 
       const unscaled = pdfPage.getViewport({ scale: 1 });
       setPageSize({ width: unscaled.width, height: unscaled.height });
+      // view = [x0, y0, x1, y1] — MediaBox/CropBox 교집합의 절대 좌표. (x0, y0)가
+      // (0,0)이 아니면 그만큼 오프셋을 보정해야 pdf-lib과 같은 좌표계가 된다.
+      const [x0, y0] = pdfPage.view;
+      setPageOrigin({ x: x0, y: y0 });
+
+      // 새 필드에 그 문서에서 실제 쓰이는 글자 크기를 기본값으로 넣어주기 위해,
+      // 텍스트 위치(절대 PDF 좌표)와 글자 크기를 미리 뽑아둔다. getTextContent()는
+      // viewport 없이 호출하면 위 view와 동일한 절대 좌표계로 값을 준다.
+      const textContent = await pdfPage.getTextContent();
+      if (!cancelled) {
+        const items = textContent.items.flatMap((item) => {
+          if (!("transform" in item) || !item.str.trim()) return [];
+          const [, , c, d, e, f] = item.transform;
+          const fontSize = Math.hypot(c, d) || item.height || 10;
+          return [{ x: e, y: f, width: item.width, fontSize }];
+        });
+        setNearbyTextItems(items);
+      }
 
       const viewport = pdfPage.getViewport({ scale });
       const canvas = canvasRef.current;
@@ -133,8 +158,8 @@ export function MappingStudio({
   function toCanvasRect(f: Pick<Field, "x" | "y" | "width" | "height">) {
     if (!pageSize) return { left: 0, top: 0, width: 0, height: 0 };
     return {
-      left: f.x * scale,
-      top: (pageSize.height - f.y - f.height) * scale,
+      left: (f.x - pageOrigin.x) * scale,
+      top: (pageSize.height - (f.y - pageOrigin.y) - f.height) * scale,
       width: f.width * scale,
       height: f.height * scale,
     };
@@ -143,11 +168,30 @@ export function MappingStudio({
   function toPdfRect(left: number, top: number, width: number, height: number) {
     const pageHeight = pageSize?.height ?? 0;
     return {
-      x: left / scale,
-      y: pageHeight - (top + height) / scale,
+      x: left / scale + pageOrigin.x,
+      y: pageOrigin.y + pageHeight - (top + height) / scale,
       width: width / scale,
       height: height / scale,
     };
+  }
+
+  // 새로 그린 박스 주변에서 가장 가까운 실제 텍스트를 찾아 그 글자 크기를 기본값으로
+  // 쓴다 — 문서마다 라벨 글자 크기가 다른데 항상 10pt로 고정하면 눈에 띄게 어긋난다.
+  function guessFontSize(centerX: number, centerY: number, boxHeight: number): number {
+    let best: { fontSize: number; dist: number } | null = null;
+    for (const item of nearbyTextItems) {
+      const itemCenterX = item.x + item.width / 2;
+      const dist = Math.hypot(itemCenterX - centerX, item.y - centerY);
+      if (!best || dist < best.dist) {
+        best = { fontSize: item.fontSize, dist };
+      }
+    }
+    // 너무 멀리 있는 텍스트(다른 줄/다른 구역)까지 끌어오지 않도록 박스 높이의
+    // 4배 이내로만 인정한다. 근처에 텍스트가 없으면 박스 높이 기준으로 대략 맞춘다.
+    if (best && best.dist <= boxHeight * 4) {
+      return Math.round(best.fontSize * 10) / 10;
+    }
+    return Math.max(6, Math.round(boxHeight * 0.65 * 10) / 10);
   }
 
   function relativePoint(e: PointerEvent) {
@@ -186,13 +230,18 @@ export function MappingStudio({
       const pdfRect = toPdfRect(current.x, current.y, current.w, current.h);
       const taken = new Set(fields.map((f) => f.key));
       const label = `필드 ${fields.length + 1}`;
+      const fontSize = guessFontSize(
+        pdfRect.x + pdfRect.width / 2,
+        pdfRect.y + pdfRect.height / 2,
+        pdfRect.height
+      );
       const newField: Field = {
         id: crypto.randomUUID(),
         key: slugify(label, taken),
         label,
         type: "TEXT",
         page,
-        fontSize: 10,
+        fontSize,
         fixedValue: null,
         ...pdfRect,
       };
@@ -396,6 +445,17 @@ export function MappingStudio({
                   </option>
                 ))}
               </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="field-font-size">글자 크기 (자동 추정됨)</Label>
+              <Input
+                id="field-font-size"
+                type="number"
+                min={6}
+                step={0.5}
+                value={selectedField.fontSize}
+                onChange={(e) => updateSelected({ fontSize: Number(e.target.value) })}
+              />
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="flex items-center gap-2 text-sm">
