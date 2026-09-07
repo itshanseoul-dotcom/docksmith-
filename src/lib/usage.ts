@@ -2,7 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import type { PlanTier } from "@/generated/prisma/client";
 
-// null = 무제한. ROADMAP 2.2(Stripe) 가격표 그대로 — docs/PRD.md 12장.
+// null = 무제한. ROADMAP 2.2 가격표 그대로 — docs/PRD.md 12장.
 export const PLAN_LIMITS: Record<PlanTier, number | null> = {
   FREE: 20,
   STARTER: 500,

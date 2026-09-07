@@ -12,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { createBillingPortalSession, cancelPortOneSubscription } from "./actions";
+import { cancelPortOneSubscription } from "./actions";
 import { PortOneCheckoutButton } from "./portone-checkout-button";
 import { orderName, type SubscribablePlan } from "@/lib/portone";
 import { SiteFooter } from "@/components/site-footer";
@@ -45,7 +45,6 @@ export default async function BillingPage({
 
   const isOwner = canManageMembers(membership.role);
   const monthlyLimit = PLAN_LIMITS[organization.planTier];
-  const hasStripeSubscription = organization.stripeSubscriptionId !== null;
   const hasPortoneSubscription = organization.portoneBillingKey !== null;
 
   return (
@@ -121,13 +120,6 @@ export default async function BillingPage({
             <form action={cancelPortOneSubscription}>
               <Button type="submit" variant="outline">
                 구독 해지
-              </Button>
-            </form>
-          )}
-          {hasStripeSubscription && (
-            <form action={createBillingPortalSession}>
-              <Button type="submit" variant="outline">
-                구독 관리 (결제수단 변경 / 해지) — 이전 결제수단
               </Button>
             </form>
           )}
