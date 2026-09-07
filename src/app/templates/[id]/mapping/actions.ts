@@ -19,6 +19,7 @@ export interface FieldInput {
   height: number | null;
   fontSize: number;
   fixedValue: string | null;
+  useAsFileName: boolean;
 }
 
 export async function saveTemplateFields(
@@ -52,6 +53,10 @@ export async function saveTemplateFields(
   const keys = fields.map((f) => f.key);
   if (new Set(keys).size !== keys.length) {
     return { error: "필드 이름이 중복됩니다." };
+  }
+
+  if (fields.filter((f) => f.useAsFileName).length > 1) {
+    return { error: "파일명으로 쓸 필드는 하나만 선택할 수 있습니다." };
   }
 
   await prisma.$transaction([

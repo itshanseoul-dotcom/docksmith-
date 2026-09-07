@@ -47,6 +47,7 @@ function field(key: string): FieldSpec {
     height: null,
     fontSize: 10,
     fixedValue: null,
+    useAsFileName: false,
   };
 }
 

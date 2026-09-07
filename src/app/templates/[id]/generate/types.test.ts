@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveFieldValue, type FieldSpec } from "./types";
+import { resolveFieldValue, fileNameForRow, type FieldSpec } from "./types";
 
 function field(overrides: Partial<FieldSpec> = {}): FieldSpec {
   return {
@@ -13,6 +13,7 @@ function field(overrides: Partial<FieldSpec> = {}): FieldSpec {
     height: null,
     fontSize: 10,
     fixedValue: null,
+    useAsFileName: false,
     ...overrides,
   };
 }
@@ -34,5 +35,46 @@ describe("resolveFieldValue", () => {
 
   it("an empty-string fixed value still wins over a supplied value", () => {
     expect(resolveFieldValue(field({ fixedValue: "" }), "some csv value")).toBe("");
+  });
+});
+
+describe("fileNameForRow", () => {
+  it("falls back to row-N when no field is marked useAsFileName", () => {
+    const fields = [field()];
+    const used = new Set<string>();
+    expect(fileNameForRow(fields, { invoice_no: "INV-1001" }, 0, "pdf", used)).toBe("row-1.pdf");
+  });
+
+  it("uses the designated field's value as the file name", () => {
+    const fields = [field({ useAsFileName: true })];
+    const used = new Set<string>();
+    expect(fileNameForRow(fields, { invoice_no: "INV-1001" }, 0, "pdf", used)).toBe(
+      "INV-1001.pdf"
+    );
+  });
+
+  it("falls back to row-N when the designated field's value is empty", () => {
+    const fields = [field({ useAsFileName: true })];
+    const used = new Set<string>();
+    expect(fileNameForRow(fields, { invoice_no: "" }, 2, "pdf", used)).toBe("row-3.pdf");
+  });
+
+  it("sanitizes characters that are invalid in file names", () => {
+    const fields = [field({ useAsFileName: true })];
+    const used = new Set<string>();
+    expect(fileNameForRow(fields, { invoice_no: 'INV/1001:"bad"' }, 0, "pdf", used)).toBe(
+      "INV_1001__bad_.pdf"
+    );
+  });
+
+  it("de-duplicates repeated values within the same batch", () => {
+    const fields = [field({ useAsFileName: true })];
+    const used = new Set<string>();
+    expect(fileNameForRow(fields, { invoice_no: "INV-1001" }, 0, "pdf", used)).toBe(
+      "INV-1001.pdf"
+    );
+    expect(fileNameForRow(fields, { invoice_no: "INV-1001" }, 1, "pdf", used)).toBe(
+      "INV-1001-2.pdf"
+    );
   });
 });

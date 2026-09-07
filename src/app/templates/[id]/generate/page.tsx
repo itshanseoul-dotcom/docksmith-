@@ -67,6 +67,7 @@ export default async function GenerateTemplatePage({
           height: f.height,
           fontSize: f.fontSize,
           fixedValue: f.fixedValue,
+          useAsFileName: f.useAsFileName,
         }))}
         aliases={aliases}
         usedThisMonth={usedThisMonth}

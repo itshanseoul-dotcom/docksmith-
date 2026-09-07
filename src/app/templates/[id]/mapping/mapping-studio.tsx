@@ -243,6 +243,7 @@ export function MappingStudio({
         page,
         fontSize,
         fixedValue: null,
+        useAsFileName: false,
         ...pdfRect,
       };
       setFields((prev) => [...prev, newField]);
@@ -257,6 +258,12 @@ export function MappingStudio({
   function updateSelected(patch: Partial<Field>) {
     if (!selectedId) return;
     setFields((prev) => prev.map((f) => (f.id === selectedId ? { ...f, ...patch } : f)));
+  }
+
+  // 파일명으로 쓸 필드는 템플릿당 하나뿐이어야 하므로, 체크하면 다른 필드의 체크는
+  // 전부 풀어준다(단일 선택 라디오처럼 동작).
+  function setFileNameField(id: string, checked: boolean) {
+    setFields((prev) => prev.map((f) => ({ ...f, useAsFileName: checked && f.id === id })));
   }
 
   function removeField(id: string) {
@@ -280,6 +287,7 @@ export function MappingStudio({
           height: f.height,
           fontSize: f.fontSize,
           fixedValue: f.fixedValue,
+          useAsFileName: f.useAsFileName,
         }))
       );
       if (result?.error) setSaveError(result.error);
@@ -481,6 +489,14 @@ export function MappingStudio({
                 </>
               )}
             </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={selectedField.useAsFileName}
+                onChange={(e) => setFileNameField(selectedField.id, e.target.checked)}
+              />
+              생성 파일명으로 사용
+            </label>
             <p className="text-xs text-muted-foreground">key: {selectedField.key}</p>
             <Button
               type="button"

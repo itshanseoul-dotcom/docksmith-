@@ -51,6 +51,7 @@ export default async function TemplateMappingPage({
           label: f.label,
           type: f.type,
           fixedValue: f.fixedValue,
+          useAsFileName: f.useAsFileName,
         }))}
       />
     );
@@ -82,6 +83,7 @@ export default async function TemplateMappingPage({
           height: f.height ?? 0,
           fontSize: f.fontSize,
           fixedValue: f.fixedValue,
+          useAsFileName: f.useAsFileName,
         }))}
       />
     </div>

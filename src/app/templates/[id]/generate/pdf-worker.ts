@@ -1,4 +1,5 @@
 import { fillPdfRow } from "./fill-pdf";
+import { fileNameForRow } from "./types";
 import { getWorkerSelf, type GenerateRequest } from "./worker-protocol";
 
 const worker = getWorkerSelf();
@@ -6,6 +7,7 @@ const worker = getWorkerSelf();
 addEventListener("message", async (event: MessageEvent<GenerateRequest>) => {
   const { templateBytes, fields, rows } = event.data;
   const total = rows.length;
+  const usedNames = new Set<string>();
 
   const koreanFontBytes = await fetch("/fonts/noto-sans-kr-400.woff").then((r) =>
     r.arrayBuffer()
@@ -16,8 +18,9 @@ addEventListener("message", async (event: MessageEvent<GenerateRequest>) => {
     try {
       const bytes = await fillPdfRow(templateBytes, fields, row, koreanFontBytes);
       const buffer = bytes.buffer as ArrayBuffer;
+      const fileName = fileNameForRow(fields, row, i, "pdf", usedNames);
       worker.postMessage(
-        { type: "row-done", index: i, total, fileName: `row-${i + 1}.pdf`, bytes: buffer },
+        { type: "row-done", index: i, total, fileName, bytes: buffer },
         [buffer]
       );
     } catch (err) {

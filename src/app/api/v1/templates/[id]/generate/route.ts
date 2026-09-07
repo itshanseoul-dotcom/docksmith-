@@ -11,7 +11,11 @@ import { logError } from "@/lib/error-log";
 import { fillPdfRow } from "@/app/templates/[id]/generate/fill-pdf";
 import { fillDocxRow } from "@/app/templates/[id]/generate/fill-docx";
 import { fillXlsxRow } from "@/app/templates/[id]/generate/fill-xlsx";
-import { resolveFieldValue, type FieldSpec } from "@/app/templates/[id]/generate/types";
+import {
+  resolveFieldValue,
+  fileNameForRow,
+  type FieldSpec,
+} from "@/app/templates/[id]/generate/types";
 
 export const runtime = "nodejs";
 
@@ -126,6 +130,7 @@ async function handlePost(
     height: f.height,
     fontSize: f.fontSize,
     fixedValue: f.fixedValue,
+    useAsFileName: f.useAsFileName,
   }));
 
   const mappedRows = rows.map((row) => {
@@ -141,19 +146,20 @@ async function handlePost(
   const zip = new JSZip();
   let successCount = 0;
   const errors: { index: number; message: string }[] = [];
+  const usedNames = new Set<string>();
 
   for (let i = 0; i < mappedRows.length; i++) {
     const row = mappedRows[i];
     try {
       if (template.fileType === "PDF") {
         const bytes = await fillPdfRow(templateBytes, fields, row, koreanFontBytes!);
-        zip.file(`row-${i + 1}.pdf`, bytes);
+        zip.file(fileNameForRow(fields, row, i, "pdf", usedNames), bytes);
       } else if (template.fileType === "DOCX") {
         const bytes = fillDocxRow(templateBytes, fields, row);
-        zip.file(`row-${i + 1}.docx`, bytes);
+        zip.file(fileNameForRow(fields, row, i, "docx", usedNames), bytes);
       } else {
         const bytes = await fillXlsxRow(templateBytes, row);
-        zip.file(`row-${i + 1}.xlsx`, bytes);
+        zip.file(fileNameForRow(fields, row, i, "xlsx", usedNames), bytes);
       }
       successCount++;
     } catch (err) {

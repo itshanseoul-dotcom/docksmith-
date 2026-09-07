@@ -173,6 +173,10 @@ model TemplateField {
   fontSize   Float     @default(10)
   fixedValue String?
 
+  // 체크된 필드가 있으면 생성 결과 파일명이 row-N 대신 이 필드의 실제 값이 된다
+  // (예: 송장번호 필드에 체크 → INV-1001.pdf). 템플릿당 최대 1개만 허용한다.
+  useAsFileName Boolean @default(false)
+
   @@unique([templateId, key])
   @@map("template_fields")
 }
