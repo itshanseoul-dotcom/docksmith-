@@ -194,32 +194,6 @@ export function MappingStudio({
     return Math.max(6, Math.round(boxHeight * 0.65 * 10) / 10);
   }
 
-  // "필드 1/2/3" 같은 기본 이름은 사람이 CSV 매칭 화면에서 어느 자리인지 구분을 못 해
-  // 엉뚱한 컬럼을 연결하는 실수로 이어진다. 문서 서식은 대개 "라벨: ___" 형태라, 박스
-  // 왼쪽(같은 줄) 또는 바로 위에 있는 텍스트를 찾아 그걸 기본 이름으로 제안한다.
-  function guessLabel(pdfRect: { x: number; y: number; width: number; height: number }): string | null {
-    const centerY = pdfRect.y + pdfRect.height / 2;
-    const lineTolerance = Math.max(pdfRect.height, 6);
-
-    const toLeft = pageTextItems
-      .filter((item) => item.x + item.width <= pdfRect.x + 2 && Math.abs(item.y - centerY) <= lineTolerance)
-      .sort((a, b) => b.x - a.x)[0];
-    if (toLeft) return cleanLabelText(toLeft.str);
-
-    const above = pageTextItems
-      .filter((item) => item.y > pdfRect.y + pdfRect.height && item.x <= pdfRect.x + pdfRect.width)
-      .sort((a, b) => a.y - b.y)[0];
-    if (above && above.y - (pdfRect.y + pdfRect.height) <= lineTolerance * 3) {
-      return cleanLabelText(above.str);
-    }
-
-    return null;
-  }
-
-  function cleanLabelText(str: string): string {
-    return str.replace(/[:：_\-\s]+$/, "").trim();
-  }
-
   function relativePoint(e: PointerEvent) {
     const rect = overlayRef.current!.getBoundingClientRect();
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
@@ -255,7 +229,10 @@ export function MappingStudio({
     if (current && current.w >= MIN_DRAG_PX && current.h >= MIN_DRAG_PX) {
       const pdfRect = toPdfRect(current.x, current.y, current.w, current.h);
       const taken = new Set(fields.map((f) => f.key));
-      const label = guessLabel(pdfRect) || `필드 ${fields.length + 1}`;
+      // 이름은 일부러 비워둔다 — 문서 텍스트를 주워 자동으로 채우면 엉뚱한 문장이
+      // 이름이 되기 쉽고(실제로 발생함), 저장 시 이름이 비어있으면 막히므로 반드시
+      // 사용자가 직접 입력하게 된다.
+      const label = "";
       const fontSize = guessFontSize(
         pdfRect.x + pdfRect.width / 2,
         pdfRect.y + pdfRect.height / 2,
@@ -463,7 +440,13 @@ export function MappingStudio({
                 id="field-label"
                 value={selectedField.label}
                 onChange={(e) => updateSelected({ label: e.target.value })}
+                placeholder="예: 송장번호, 수취인"
               />
+              <p className="text-xs text-muted-foreground">
+                문서에 적힌 이름으로 입력하세요 — 필드가 여러 개일 때 나중에 CSV
+                컬럼을 연결하는 화면에서 어느 자리인지 구분하는 유일한 방법이라
+                꼭 필요합니다.
+              </p>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="field-type">타입</Label>
